@@ -1,0 +1,758 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Inventory Forecast &amp; Predictive Analytics</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0f172a;--card:#1e293b;--border:#334155;--text:#e2e8f0;
+  --muted:#94a3b8;--accent:#3b82f6;--accent2:#8b5cf6;
+  --green:#10b981;--amber:#f59e0b;--red:#ef4444;--cyan:#06b6d4;
+  --max-w:1200px;--nav-h:56px;
+}
+html{scroll-behavior:smooth;scroll-padding-top:calc(var(--nav-h)+16px)}
+body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,-apple-system,sans-serif;line-height:1.6;overflow-x:hidden}
+
+/* Scrollbar */
+::-webkit-scrollbar{width:8px}
+::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px}
+::-webkit-scrollbar-thumb:hover{background:#475569}
+*{scrollbar-width:thin;scrollbar-color:var(--border) var(--bg)}
+
+/* Nav */
+nav{position:sticky;top:0;z-index:100;background:rgba(15,23,42,.92);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);height:var(--nav-h);display:flex;align-items:center;overflow-x:auto;white-space:nowrap;padding:0 16px}
+nav a{color:var(--muted);text-decoration:none;font-size:.8rem;padding:6px 12px;border-radius:6px;transition:all .2s;flex-shrink:0}
+nav a:hover{color:var(--text);background:var(--card)}
+nav .brand{font-weight:700;color:var(--accent);font-size:.9rem;margin-right:24px;flex-shrink:0}
+
+/* Layout */
+.container{max-width:var(--max-w);margin:0 auto;padding:40px 20px}
+section{margin-bottom:64px}
+h1{font-size:2.4rem;font-weight:800;line-height:1.2;margin-bottom:8px}
+h2{font-size:1.6rem;font-weight:700;margin-bottom:24px;color:var(--text);border-left:4px solid var(--accent);padding-left:16px}
+h3{font-size:1.15rem;font-weight:600;margin-bottom:12px}
+.subtitle{font-size:1.1rem;color:var(--muted);margin-bottom:32px}
+p,.desc{color:var(--muted);line-height:1.7}
+
+/* Cards */
+.card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:24px;transition:transform .2s,box-shadow .2s}
+.card:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,0,0,.3)}
+.grid-2{display:grid;grid-template-columns:repeat(2,1fr);gap:20px}
+.grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}
+.grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:20px}
+@media(max-width:900px){.grid-2,.grid-3,.grid-4{grid-template-columns:1fr}}
+@media(max-width:600px){h1{font-size:1.6rem}h2{font-size:1.2rem}nav a{font-size:.7rem;padding:4px 8px}}
+
+/* Stat cards */
+.stat-card{text-align:center;padding:28px 16px}
+.stat-num{font-size:2rem;font-weight:800;color:var(--accent)}
+.stat-label{font-size:.85rem;color:var(--muted);margin-top:4px}
+
+/* Badge */
+.badge{display:inline-block;padding:3px 10px;border-radius:20px;font-size:.75rem;font-weight:600}
+.badge-green{background:rgba(16,185,129,.15);color:var(--green)}
+.badge-red{background:rgba(239,68,68,.15);color:var(--red)}
+.badge-amber{background:rgba(245,158,11,.15);color:var(--amber)}
+.badge-blue{background:rgba(59,130,246,.15);color:var(--accent)}
+
+/* Icon circle */
+.icon-circle{width:48px;height:48px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.3rem;font-weight:700;margin-bottom:12px;flex-shrink:0}
+
+/* Table */
+.table-wrap{overflow-x:auto;margin:16px 0}
+table{width:100%;border-collapse:collapse;font-size:.9rem}
+th{text-align:left;padding:12px 16px;background:rgba(59,130,246,.08);color:var(--accent);font-weight:600;border-bottom:2px solid var(--border)}
+td{padding:10px 16px;border-bottom:1px solid var(--border);color:var(--muted)}
+tr:hover td{background:rgba(59,130,246,.04)}
+
+/* Flow */
+.flow-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:16px}
+.flow-box{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px 20px;text-align:center;font-size:.85rem;font-weight:500;min-width:100px}
+.flow-arrow{color:var(--accent);font-size:1.4rem;flex-shrink:0}
+
+/* Timeline */
+.timeline{position:relative;padding-left:28px}
+.timeline::before{content:'';position:absolute;left:8px;top:0;bottom:0;width:2px;background:var(--border)}
+.timeline-item{position:relative;margin-bottom:28px;padding-left:20px}
+.timeline-item::before{content:'';position:absolute;left:-24px;top:6px;width:12px;height:12px;border-radius:50%;border:2px solid var(--accent);background:var(--bg)}
+.timeline-item.done::before{background:var(--green);border-color:var(--green)}
+.timeline-item .phase-label{font-size:.75rem;font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px}
+.timeline-item h3{margin-bottom:4px}
+.timeline-item p{font-size:.88rem}
+
+/* Footer */
+.footer{text-align:center;padding:60px 20px;border-top:1px solid var(--border);margin-top:40px}
+.footer h2{border:none;padding:0;text-align:center;font-size:2rem}
+
+/* Utility */
+.mb-8{margin-bottom:8px}.mb-12{margin-bottom:12px}.mb-16{margin-bottom:16px}.mb-20{margin-bottom:20px}.mb-24{margin-bottom:24px}.mb-32{margin-bottom:32px}
+.mt-12{margin-top:12px}.mt-16{margin-top:16px}.mt-20{margin-top:20px}
+.flex{display:flex}.items-center{align-items:center}.gap-12{gap:12px}.gap-16{gap:16px}
+.text-green{color:var(--green)}.text-red{color:var(--red)}.text-amber{color:var(--amber)}.text-blue{color:var(--accent)}.text-cyan{color:var(--cyan)}.text-purple{color:var(--accent2)}.text-muted{color:var(--muted)}
+.fw-600{font-weight:600}.fs-sm{font-size:.85rem}.fs-xs{font-size:.75rem}
+ul{padding-left:20px;color:var(--muted);line-height:2}
+li{margin-bottom:4px}
+</style>
+</head>
+<body>
+
+<nav>
+  <span class="brand">📊 Inventory Forecast</span>
+  <a href="#problem">Problem</a>
+  <a href="#solution">Solution</a>
+  <a href="#architecture">Architecture</a>
+  <a href="#dataflow">Data Flow</a>
+  <a href="#data">Data</a>
+  <a href="#models">ML Models</a>
+  <a href="#results">Results</a>
+  <a href="#optimization">Optimization</a>
+  <a href="#demo">Demo</a>
+  <a href="#impact">Impact</a>
+</nav>
+
+<div class="container">
+
+<!-- ==================== TITLE ==================== -->
+<section id="title" style="text-align:center;padding-top:48px;padding-bottom:16px">
+  <h1 style="font-size:2.8rem">Inventory Forecast &amp; Predictive Analytics</h1>
+  <p class="subtitle" style="font-size:1.2rem;margin-top:8px">ML-powered demand forecasting for a multi-outlet supermarket chain</p>
+  <div class="grid-4" style="margin-top:32px">
+    <div class="card stat-card">
+      <div class="stat-num">40</div>
+      <div class="stat-label">Products</div>
+    </div>
+    <div class="card stat-card">
+      <div class="stat-num">5</div>
+      <div class="stat-label">Outlets</div>
+    </div>
+    <div class="card stat-card">
+      <div class="stat-num">4</div>
+      <div class="stat-label">ML Models</div>
+    </div>
+    <div class="card stat-card">
+      <div class="stat-num">82K</div>
+      <div class="stat-label">Transactions</div>
+    </div>
+  </div>
+</section>
+
+<!-- ==================== THE PROBLEM ==================== -->
+<section id="problem">
+  <h2>The Problem</h2>
+  <p class="mb-20" style="font-size:1.05rem">Retailers lose <strong style="color:var(--red)">4% of annual revenue</strong> due to poor inventory management. Out-of-stock situations and overstock waste directly hit the bottom line.</p>
+  <div class="grid-2">
+    <div class="card" style="border-left:4px solid var(--red)">
+      <h3 style="color:var(--red)">Stockouts</h3>
+      <div style="font-size:1.8rem;font-weight:800;color:var(--red);margin:8px 0">$2M</div>
+      <p class="fs-sm mb-16">Lost revenue on $50M annual sales</p>
+      <ul>
+        <li>Customers leave empty-handed when shelves are bare</li>
+        <li>Lost sales cannot be recovered &mdash; customer goes to a competitor</li>
+        <li>Repeated stockouts erode customer loyalty and trust</li>
+        <li>Promotional campaigns fail when featured items are unavailable</li>
+        <li>Estimated 4% of $50M revenue = $2M annual loss</li>
+      </ul>
+    </div>
+    <div class="card" style="border-left:4px solid var(--amber)">
+      <h3 style="color:var(--amber)">Overstock</h3>
+      <div style="font-size:1.8rem;font-weight:800;color:var(--amber);margin:8px 0">$1.5M</div>
+      <p class="fs-sm mb-16">Holding cost waste annually</p>
+      <ul>
+        <li>Capital tied up in excess inventory that could be invested elsewhere</li>
+        <li>Warehouse space wasted on slow-moving and obsolete goods</li>
+        <li>Perishable items expire before they can be sold</li>
+        <li>Insurance, handling, and storage costs accumulate monthly</li>
+        <li>Estimated holding cost waste = $1.5M annually</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ==================== OUR SOLUTION ==================== -->
+<section id="solution">
+  <h2>Our Solution</h2>
+  <div class="grid-2">
+    <div>
+      <div class="grid-2" style="margin-bottom:0">
+        <div class="card">
+          <div style="font-size:1.6rem;margin-bottom:8px">📈</div>
+          <h3>Predict Demand</h3>
+          <p class="fs-sm">4 ML models forecast future sales for every product at every outlet, capturing trend, seasonality, and non-linear patterns.</p>
+        </div>
+        <div class="card">
+          <div style="font-size:1.6rem;margin-bottom:8px">⚠️</div>
+          <h3>Detect Risk</h3>
+          <p class="fs-sm">Real-time risk scoring identifies stockout threats, overstock situations, and supply chain disruptions before they impact sales.</p>
+        </div>
+        <div class="card">
+          <div style="font-size:1.6rem;margin-bottom:8px">💡</div>
+          <h3>Recommend Actions</h3>
+          <p class="fs-sm">Automated, prioritized restock and transfer recommendations with urgency levels: Critical, High, Medium, Low.</p>
+        </div>
+        <div class="card">
+          <div style="font-size:1.6rem;margin-bottom:8px">⚡</div>
+          <h3>Optimize Orders</h3>
+          <p class="fs-sm">Economic Order Quantity, safety stock, and reorder point calculations minimize total inventory cost while maintaining service levels.</p>
+        </div>
+      </div>
+    </div>
+    <div class="card" style="display:flex;flex-direction:column;justify-content:center;background:linear-gradient(135deg,rgba(59,130,246,.08),rgba(139,92,246,.08))">
+      <h3 style="color:var(--accent);margin-bottom:20px">Projected Annual Impact</h3>
+      <div style="margin-bottom:20px">
+        <div style="font-size:2.2rem;font-weight:800;color:var(--green)">$1.5M</div>
+        <div class="text-muted fs-sm">Annual savings from optimized inventory</div>
+      </div>
+      <div style="margin-bottom:20px">
+        <div style="font-size:2.2rem;font-weight:800;color:var(--accent)">-50%</div>
+        <div class="text-muted fs-sm">Reduction in stockout rate</div>
+      </div>
+      <div>
+        <div style="font-size:2.2rem;font-weight:800;color:var(--amber)">-33%</div>
+        <div class="text-muted fs-sm">Reduction in holding cost waste</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ==================== SYSTEM ARCHITECTURE ==================== -->
+<section id="architecture">
+  <h2>System Architecture</h2>
+  <p class="mb-24">Four-layer architecture designed for scalability, maintainability, and real-time performance.</p>
+  <div class="grid-2" style="margin-bottom:24px">
+    <div class="card" style="border-top:3px solid var(--accent)">
+      <div class="flex items-center gap-12 mb-12">
+        <div class="icon-circle" style="background:rgba(59,130,246,.15);color:var(--accent)">🖥</div>
+        <div><h3 class="mb-8">Client Layer</h3><span class="badge badge-blue">Frontend</span></div>
+      </div>
+      <p class="fs-sm">Modern web application with interactive charts and responsive design</p>
+      <ul class="mt-12">
+        <li>Interactive dashboard with real-time data visualization</li>
+        <li>Responsive design for desktop and tablet use</li>
+        <li>Recharts for dynamic, animated chart components</li>
+        <li>Real-time data refresh without page reloads</li>
+      </ul>
+    </div>
+    <div class="card" style="border-top:3px solid var(--green)">
+      <div class="flex items-center gap-12 mb-12">
+        <div class="icon-circle" style="background:rgba(16,185,129,.15);color:var(--green)">🔌</div>
+        <div><h3 class="mb-8">API Layer</h3><span class="badge badge-green">Backend</span></div>
+      </div>
+      <p class="fs-sm">High-performance backend API</p>
+      <ul class="mt-12">
+        <li>High-performance async REST API</li>
+        <li>Handles all forecast and recommendation requests</li>
+        <li>Validates all incoming data automatically</li>
+        <li>Connects securely to the dashboard</li>
+      </ul>
+    </div>
+    <div class="card" style="border-top:3px solid var(--accent2)">
+      <div class="flex items-center gap-12 mb-12">
+        <div class="icon-circle" style="background:rgba(139,92,246,.15);color:var(--accent2)">🧠</div>
+        <div><h3 class="mb-8">ML Engine</h3><span class="badge" style="background:rgba(139,92,246,.15);color:var(--accent2)">Intelligence</span></div>
+      </div>
+      <p class="fs-sm">4 Forecasting Models + Inventory Optimizer</p>
+      <ul class="mt-12">
+        <li>SMA Baseline &mdash; Simple Moving Average reference model</li>
+        <li>Holt-Winters &mdash; Exponential smoothing with trend &amp; seasonality</li>
+        <li>ARIMA &mdash; AutoRegressive Integrated Moving Average</li>
+        <li>XGBoost &mdash; Gradient boosted decision trees</li>
+        <li>Inventory optimizer with EOQ, safety stock, and reorder points</li>
+      </ul>
+    </div>
+    <div class="card" style="border-top:3px solid var(--amber)">
+      <div class="flex items-center gap-12 mb-12">
+        <div class="icon-circle" style="background:rgba(245,158,11,.15);color:var(--amber)">💾</div>
+        <div><h3 class="mb-8">Data Layer</h3><span class="badge badge-amber">Storage</span></div>
+      </div>
+      <p class="fs-sm">82,000+ transaction records from point-of-sale systems</p>
+      <ul class="mt-12">
+        <li>82,000+ point-of-sale transaction records</li>
+        <li>40 unique products across 5 outlet locations</li>
+        <li>Date range spanning over a year of history</li>
+        <li>Includes date, store, product, quantity, and revenue</li>
+      </ul>
+    </div>
+  </div>
+  
+</section>
+
+<!-- ==================== DATA FLOW ==================== -->
+<section id="dataflow">
+  <h2>Data Flow</h2>
+  <p class="mb-20">How data flows from the register to the dashboard, generating insights at every step.</p>
+
+  <h3 class="mb-12 text-blue">Training Pipeline</h3>
+  <div class="flow-row mb-24">
+    <div class="flow-box">📦 POS Data<br><span class="fs-xs text-muted">82K Records</span></div>
+    <div class="flow-arrow">&rarr;</div>
+    <div class="flow-box">⚙️ Ingestion<br><span class="fs-xs text-muted">Clean &amp; Validate</span></div>
+    <div class="flow-arrow">&rarr;</div>
+    <div class="flow-box">🔧 Features<br><span class="fs-xs text-muted">Engineering</span></div>
+    <div class="flow-arrow">&rarr;</div>
+    <div class="flow-box">📊 Train/Test<br><span class="fs-xs text-muted">Split</span></div>
+    <div class="flow-arrow">&rarr;</div>
+    <div class="flow-box">🧠 Training<br><span class="fs-xs text-muted">4 Models</span></div>
+    <div class="flow-arrow">&rarr;</div>
+    <div class="flow-box">✅ Evaluation<br><span class="fs-xs text-muted">Accuracy Score</span></div>
+  </div>
+
+  <h3 class="mb-12 text-green">Prediction &amp; Action Pipeline</h3>
+  <div class="flow-row mb-24">
+    <div class="flow-box">📈 Forecast<br><span class="fs-xs text-muted">30-Day Predictions</span></div>
+    <div class="flow-arrow">&rarr;</div>
+    <div class="flow-box">⚡ Optimization<br><span class="fs-xs text-muted">EOQ &amp; Safety Stock</span></div>
+    <div class="flow-arrow">&rarr;</div>
+    <div class="flow-box">💡 Recommendations<br><span class="fs-xs text-muted">Priority Actions</span></div>
+    <div class="flow-arrow">&rarr;</div>
+    <div class="flow-box">🖥 Dashboard<br><span class="fs-xs text-muted">Live Monitoring</span></div>
+  </div>
+</section>
+
+<!-- ==================== THE DATA ==================== -->
+<section id="data">
+  <h2>The Data</h2>
+  <p class="mb-20">82,186 POS transactions across 5 outlets and 40 products. Here is how each outlet performs.</p>
+
+  <h3 class="mb-12">Outlet Performance</h3>
+  <div class="table-wrap mb-32">
+    <table>
+      <thead>
+        <tr><th>Outlet</th><th>Total Revenue</th><th>% of Total</th><th>Avg Daily Revenue</th><th>Profile</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Main Market</td><td style="color:var(--text);font-weight:600">$527,000</td><td>21.3%</td><td>$724</td><td>High-traffic flagship</td></tr>
+        <tr><td>City Center</td><td style="color:var(--text);font-weight:600">$479,000</td><td>19.3%</td><td>$658</td><td>Urban downtown location</td></tr>
+        <tr><td>Mall Branch</td><td style="color:var(--text);font-weight:600">$415,000</td><td>16.7%</td><td>$570</td><td>Shopping mall kiosk</td></tr>
+        <tr><td>Residential</td><td style="color:var(--text);font-weight:600">$609,000</td><td class="text-green fw-600">24.6%</td><td>$837</td><td>Neighborhood store</td></tr>
+        <tr><td>Highway</td><td style="color:var(--text);font-weight:600">$358,000</td><td>14.5%</td><td>$492</td><td>Roadside convenience</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3 class="mb-12">Stock Archetypes</h3>
+  <div class="grid-3">
+    <div class="card" style="border-left:4px solid var(--red)">
+      <div class="flex items-center gap-12">
+        <div style="font-size:1.8rem;font-weight:800;color:var(--red)">8%</div>
+        <div>
+          <h3 class="mb-8">Supply Disrupted</h3>
+          <p class="fs-sm">Irregular delivery patterns causing intermittent zero-stock days. Supply chain issues prevent consistent replenishment.</p>
+        </div>
+      </div>
+    </div>
+    <div class="card" style="border-left:4px solid var(--amber)">
+      <div class="flex items-center gap-12">
+        <div style="font-size:1.8rem;font-weight:800;color:var(--amber)">12%</div>
+        <div>
+          <h3 class="mb-8">Severely Overstocked</h3>
+          <p class="fs-sm">Consistently high inventory levels far exceeding demand. Capital and storage space wasted on excess stock.</p>
+        </div>
+      </div>
+    </div>
+    <div class="card" style="border-left:4px solid var(--red)">
+      <div class="flex items-center gap-12">
+        <div style="font-size:1.8rem;font-weight:800;color:var(--red)">15%</div>
+        <div>
+          <h3 class="mb-8">Chronically Understocked</h3>
+          <p class="fs-sm">Perpetually low inventory levels. Frequent stockouts indicate demand consistently outpaces supply.</p>
+        </div>
+      </div>
+    </div>
+    <div class="card" style="border-left:4px solid var(--amber)">
+      <div class="flex items-center gap-12">
+        <div style="font-size:1.8rem;font-weight:800;color:var(--amber)">15%</div>
+        <div>
+          <h3 class="mb-8">Temporary Stockout</h3>
+          <p class="fs-sm">Occasional zero-stock days in an otherwise healthy pattern. Usually caused by demand spikes or delayed shipments.</p>
+        </div>
+      </div>
+    </div>
+    <div class="card" style="border-left:4px solid var(--green)">
+      <div class="flex items-center gap-12">
+        <div style="font-size:1.8rem;font-weight:800;color:var(--green)">50%</div>
+        <div>
+          <h3 class="mb-8">Normal</h3>
+          <p class="fs-sm">Healthy, consistent stock levels that closely match demand. These items require minimal intervention.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ==================== THE 4 ML MODELS ==================== -->
+<section id="models">
+  <h2>The 4 ML Models</h2>
+  <p class="mb-24">Four different forecasting approaches are compared to find the most accurate prediction for each product.</p>
+  <div class="grid-2">
+    <div class="card">
+      <div class="flex items-center gap-12 mb-12">
+        <div class="icon-circle" style="background:rgba(148,163,184,.15);color:var(--muted);font-size:1rem">S</div>
+        <div><h3>SMA Baseline</h3><span class="badge" style="background:rgba(148,163,184,.15);color:var(--muted)">Baseline</span></div>
+      </div>
+      <p class="fs-sm mb-12"><strong>What it captures:</strong> The simplest model &mdash; a 7-day average of recent sales. It captures the general level of demand but ignores trends, seasonality, and all other patterns.</p>
+      <p class="fs-sm mb-12"><strong>Role:</strong> Serves as the benchmark. Every other model must beat this baseline to justify its complexity. If a sophisticated model cannot outperform SMA, it is not adding value.</p>
+      <p class="fs-sm"><strong>Config:</strong> Simple 7-day average. No training required.</p>
+    </div>
+    <div class="card">
+      <div class="flex items-center gap-12 mb-12">
+        <div class="icon-circle" style="background:rgba(59,130,246,.15);color:var(--accent);font-size:1rem">H</div>
+        <div><h3>Holt-Winters</h3><span class="badge badge-blue">Statistical</span></div>
+      </div>
+      <p class="fs-sm mb-12"><strong>What it captures:</strong> Three components of time series &mdash; the baseline level, the direction of change (trend), and repeating cycles (seasonality). Specifically designed for data with regular patterns.</p>
+      <p class="fs-sm mb-12"><strong>Role:</strong> The go-to model when you expect regular patterns like weekly cycles. It automatically adapts to changes in demand over time.</p>
+      <p class="fs-sm"><strong>Config:</strong> Tuned for weekly seasonal patterns with automatic parameter optimization.</p>
+    </div>
+    <div class="card">
+      <div class="flex items-center gap-12 mb-12">
+        <div class="icon-circle" style="background:rgba(16,185,129,.15);color:var(--green);font-size:1rem">A</div>
+        <div><h3>ARIMA</h3><span class="badge badge-green">Statistical</span></div>
+      </div>
+      <p class="fs-sm mb-12"><strong>What it captures:</strong> How past values influence future values, removes trends to find stable patterns, and corrects for one-time events. Handles changing data gracefully.</p>
+      <p class="fs-sm mb-12"><strong>Role:</strong> Best for data where past patterns strongly influence future values. Automatically selects the optimal settings, removing the need for manual tuning.</p>
+      <p class="fs-sm"><strong>Config:</strong> Automatically selects optimal parameters for daily data. No manual tuning needed.</p>
+    </div>
+    <div class="card">
+      <div class="flex items-center gap-12 mb-12">
+        <div class="icon-circle" style="background:rgba(245,158,11,.15);color:var(--amber);font-size:1rem">X</div>
+        <div><h3>XGBoost</h3><span class="badge badge-amber">Machine Learning</span></div>
+      </div>
+      <p class="fs-sm mb-12"><strong>What it captures:</strong> Complex, non-linear patterns that other models miss. Learns relationships between multiple factors like recent sales, time of week, and seasonal trends.</p>
+      <p class="fs-sm mb-12"><strong>Role:</strong> The most flexible model. Best when demand is influenced by many factors interacting in complex ways.</p>
+      <p class="fs-sm"><strong>Config:</strong> Uses recent sales history, weekly trends, and calendar effects as inputs. Automatically learns complex patterns.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ==================== MODEL COMPARISON RESULTS ==================== -->
+<section id="results">
+  <h2>Model Comparison Results</h2>
+  <p class="mb-20">All models evaluated on the same held-out test set using standard forecasting metrics.</p>
+
+  <div class="table-wrap mb-24">
+    <table>
+      <thead>
+        <tr><th>Model</th><th>RMSE</th><th>MAE</th><th>Bias</th><th>Improvement over SMA</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><span class="fw-600" style="color:var(--muted)">SMA Baseline</span></td>
+          <td>71.15</td>
+          <td>48.20</td>
+          <td class="text-red">+5.3</td>
+          <td class="text-muted">&mdash; Baseline</td>
+        </tr>
+        <tr>
+          <td><span class="fw-600" style="color:var(--accent)">Holt-Winters</span></td>
+          <td>66.03</td>
+          <td>44.15</td>
+          <td class="text-amber">+2.1</td>
+          <td class="text-green fw-600">+7.2%</td>
+        </tr>
+        <tr style="background:rgba(16,185,129,.05)">
+          <td><span class="fw-600" style="color:var(--green)">ARIMA</span> <span class="badge badge-green">Best</span></td>
+          <td class="text-green fw-600">63.51</td>
+          <td class="text-green fw-600">42.80</td>
+          <td class="text-green">-0.8</td>
+          <td class="text-green fw-600">+10.7% ⭐</td>
+        </tr>
+        <tr>
+          <td><span class="fw-600" style="color:var(--amber)">XGBoost</span></td>
+          <td>64.92</td>
+          <td>43.50</td>
+          <td class="text-green">-1.2</td>
+          <td class="text-green fw-600">+8.8%</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card" style="border-left:4px solid var(--green)">
+    <h3 class="mb-12">Key Takeaway: Model Progression</h3>
+    <div class="grid-2">
+      <div>
+        <p class="fs-sm mb-12">Each successive model adds sophistication and captures more complex patterns:</p>
+        <ul>
+          <li><strong>SMA (71.15):</strong> Simple average &mdash; no pattern learning at all</li>
+          <li><strong>Holt-Winters (66.03):</strong> Adds trend + seasonality &mdash; 7.2% better</li>
+          <li><strong>ARIMA (63.51):</strong> Adds autoregressive + error correction &mdash; 10.7% best</li>
+          <li><strong>XGBoost (64.92):</strong> Adds non-linear features &mdash; 8.8% with lowest bias</li>
+        </ul>
+      </div>
+      <div>
+        <h4 class="mb-8">Metric Definitions</h4>
+        <ul>
+          <li><strong>RMSE</strong>: Overall forecast error (penalizes large misses). Lower is better.</li>
+          <li><strong>MAE</strong>: Average error per prediction. Lower is better.</li>
+          <li><strong>Bias</strong>: Tendency to over or under forecast. Closer to zero is better.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ==================== INVENTORY OPTIMIZATION ==================== -->
+<section id="optimization">
+  <h2>Inventory Optimization</h2>
+  <p class="mb-20">Once we know what demand will be, the system calculates the optimal order quantities and timing to minimize costs.</p>
+
+  <div class="grid-3 mb-24">
+    <div class="card" style="border-top:3px solid var(--accent)">
+      <h3 class="mb-8 text-blue">Economic Order Quantity (EOQ)</h3>
+      <p class="fs-sm mb-12">Optimal order size that minimizes total ordering + holding costs.</p>
+      <p class="fs-sm mb-12">The system calculates the ideal order size by balancing the cost of placing orders against the cost of storing inventory.</p>
+      <div style="padding:16px;background:var(--bg);border-radius:8px;text-align:center">
+        <div class="fs-xs text-muted mb-8">Example</div>
+        <div style="font-size:1.4rem;font-weight:700;color:var(--accent)">1,776 units</div>
+        <div class="fs-xs text-muted">optimal order size for a typical product</div>
+      </div>
+    </div>
+    <div class="card" style="border-top:3px solid var(--amber)">
+      <h3 class="mb-8 text-amber">Safety Stock</h3>
+      <p class="fs-sm mb-12">Buffer inventory to protect against demand variability and lead time uncertainty.</p>
+      <p class="fs-sm mb-12">A buffer of extra inventory kept on hand to protect against unexpected demand spikes or delivery delays.</p>
+      <div style="padding:16px;background:var(--bg);border-radius:8px;text-align:center">
+        <div class="fs-xs text-muted mb-8">Example</div>
+        <div style="font-size:1.4rem;font-weight:700;color:var(--amber)">96 units</div>
+        <div class="fs-xs text-muted">recommended buffer for a typical product</div>
+      </div>
+    </div>
+    <div class="card" style="border-top:3px solid var(--green)">
+      <h3 class="mb-8 text-green">Reorder Point (ROP)</h3>
+      <p class="fs-sm mb-12">Inventory level at which a new order should be placed.</p>
+      <p class="fs-sm mb-12">The inventory level that triggers a new order. When stock drops to this point, it is time to reorder.</p>
+      <div style="padding:16px;background:var(--bg);border-radius:8px;text-align:center">
+        <div class="fs-xs text-muted mb-8">Example</div>
+        <div style="font-size:1.4rem;font-weight:700;color:var(--green)">321 units</div>
+        <div class="fs-xs text-muted">reorder trigger for a typical product</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" style="border:2px solid var(--accent);background:rgba(59,130,246,.04)">
+    <h3 class="mb-16 text-blue">Live Example: Mineral Water at Highway Outlet</h3>
+    <div class="grid-2">
+      <div>
+        <div class="grid-2" style="margin-bottom:0">
+          <div style="padding:16px;background:var(--bg);border-radius:8px;text-align:center">
+            <div class="fs-xs text-muted mb-8">EOQ</div>
+            <div style="font-size:1.6rem;font-weight:800;color:var(--accent)">3,391</div>
+            <div class="fs-xs text-muted">units per order</div>
+          </div>
+          <div style="padding:16px;background:var(--bg);border-radius:8px;text-align:center">
+            <div class="fs-xs text-muted mb-8">Safety Stock</div>
+            <div style="font-size:1.6rem;font-weight:800;color:var(--amber)">193</div>
+            <div class="fs-xs text-muted">units buffer</div>
+          </div>
+          <div style="padding:16px;background:var(--bg);border-radius:8px;text-align:center">
+            <div class="fs-xs text-muted mb-8">Reorder Point</div>
+            <div style="font-size:1.6rem;font-weight:800;color:var(--green)">427</div>
+            <div class="fs-xs text-muted">units trigger</div>
+          </div>
+          <div style="padding:16px;background:var(--bg);border-radius:8px;text-align:center">
+            <div class="fs-xs text-muted mb-8">Service Level</div>
+            <div style="font-size:1.6rem;font-weight:800;color:var(--accent2)">95%</div>
+            <div class="fs-xs text-muted">target fill rate</div>
+          </div>
+        </div>
+      </div>
+      <div>
+        <h4 class="mb-12">Current Status</h4>
+        <div style="padding:16px;background:var(--bg);border-radius:8px">
+          <div class="flex items-center gap-12 mb-12">
+            <div class="badge badge-red">CRITICAL</div>
+            <span class="fs-sm fw-600">Current stock: 0.8 days of supply remaining</span>
+          </div>
+          <div class="flex items-center gap-12 mb-12">
+            <div class="badge badge-amber">Medium Risk</div>
+            <span class="fs-sm text-muted">Stockout likely within 1 day</span>
+          </div>
+          <div class="fs-sm text-muted">
+            <p>Recommended action: <strong class="text-red">Immediate reorder of 3,391 units</strong></p>
+            <p class="mt-8">At current demand rate, this provides ~30 days of coverage.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ==================== DASHBOARD WALKTHROUGH ==================== -->
+<section id="demo">
+  <h2>Dashboard Walkthrough</h2>
+  <p class="mb-20">The analytics dashboard provides a real-time command center for inventory management.</p>
+
+  <h3 class="mb-12">KPI Cards (Top Row)</h3>
+  <div class="grid-3 mb-32">
+    <div class="card" style="padding:20px">
+      <div class="fs-xs text-muted mb-8">Total Revenue</div>
+      <div style="font-size:1.4rem;font-weight:700;color:var(--green)">$2.4M</div>
+      <p class="fs-xs mt-8">Across all 5 outlets, full date range</p>
+    </div>
+    <div class="card" style="padding:20px">
+      <div class="fs-xs text-muted mb-8">Active Products</div>
+      <div style="font-size:1.4rem;font-weight:700;color:var(--accent)">40</div>
+      <p class="fs-xs mt-8">Monitored across all locations</p>
+    </div>
+    <div class="card" style="padding:20px">
+      <div class="fs-xs text-muted mb-8">Stockout Risk Items</div>
+      <div style="font-size:1.4rem;font-weight:700;color:var(--red)">12</div>
+      <p class="fs-xs mt-8">Products at risk of stockout within 7 days</p>
+    </div>
+    <div class="card" style="padding:20px">
+      <div class="fs-xs text-muted mb-8">Overstock Items</div>
+      <div style="font-size:1.4rem;font-weight:700;color:var(--amber)">8</div>
+      <p class="fs-xs mt-8">Products with excess inventory above threshold</p>
+    </div>
+    <div class="card" style="padding:20px">
+      <div class="fs-xs text-muted mb-8">Forecast Accuracy</div>
+      <div style="font-size:1.4rem;font-weight:700;color:var(--green)">+10.7%</div>
+      <p class="fs-xs mt-8">Best model (ARIMA) improvement over baseline</p>
+    </div>
+    <div class="card" style="padding:20px">
+      <div class="fs-xs text-muted mb-8">Projected Savings</div>
+      <div style="font-size:1.4rem;font-weight:700;color:var(--accent2)">$1.5M</div>
+      <p class="fs-xs mt-8">Annual savings from optimized operations</p>
+    </div>
+  </div>
+
+  <h3 class="mb-12">Key Visualizations</h3>
+  <div class="card">
+    <ul>
+      <li><strong>Demand Forecast Charts</strong> &mdash; 30-day ahead predictions with confidence intervals for each product-outlet combination</li>
+      <li><strong>Outlet Revenue Comparison</strong> &mdash; Bar and line charts comparing performance across the 5 locations</li>
+      <li><strong>Model Accuracy Dashboard</strong> &mdash; Side-by-side RMSE comparison of all 4 models per product category</li>
+      <li><strong>Inventory Heatmap</strong> &mdash; Color-coded matrix showing stock health across products (green = healthy, red = critical)</li>
+      <li><strong>Stockout Timeline</strong> &mdash; Historical view of stockout events with predicted future occurrences</li>
+      <li><strong>Category Breakdown</strong> &mdash; Revenue and volume by product category with seasonal trend overlay</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ==================== AUTOMATED RECOMMENDATIONS ==================== -->
+<section id="recommendations">
+  <h2>Automated Recommendations</h2>
+  <p class="mb-20">The system generates prioritized, actionable recommendations based on forecast output and current inventory state.</p>
+
+  <div class="grid-2 mb-24">
+    <div class="card" style="border-left:4px solid var(--red)">
+      <div class="flex items-center gap-12 mb-12">
+        <div class="badge badge-red">CRITICAL</div>
+        <h3>Critical Restock</h3>
+      </div>
+      <p class="fs-sm">Product will hit zero stock within 24&ndash;48 hours. Demand forecast exceeds current stock + pipeline orders. Immediate supplier contact required.</p>
+    </div>
+    <div class="card" style="border-left:4px solid var(--amber)">
+      <div class="flex items-center gap-12 mb-12">
+        <div class="badge badge-amber">HIGH</div>
+        <h3>High Priority Restock</h3>
+      </div>
+      <p class="fs-sm">Product will fall below safety stock within 3&ndash;5 days. Order should be placed this week to arrive before threshold breach.</p>
+    </div>
+    <div class="card" style="border-left:4px solid var(--accent)">
+      <div class="flex items-center gap-12 mb-12">
+        <div class="badge badge-blue">TRANSFER</div>
+        <h3>Inter-Store Transfer</h3>
+      </div>
+      <p class="fs-sm">One outlet is overstocked while another is running low on the same product. A transfer is more cost-effective than ordering new stock.</p>
+    </div>
+    <div class="card" style="border-left:4px solid var(--green)">
+      <div class="flex items-center gap-12 mb-12">
+        <div class="badge badge-green">OVERSTOCK</div>
+        <h3>Overstock Warning</h3>
+      </div>
+      <p class="fs-sm">Current stock exceeds 30-day forecasted demand. Consider markdowns, promotions, or halting reorders to avoid expiration and waste.</p>
+    </div>
+  </div>
+
+  <div class="card" style="border-left:4px solid var(--cyan)">
+    <h3 class="mb-12 text-cyan">How Recommendations Are Generated</h3>
+    <p class="fs-sm mb-12">The system automatically evaluates every product at every outlet and assigns a priority level:</p>
+    <div class="grid-2">
+      <div>
+        <ul>
+          <li>Calculates how many days of stock remain</li>
+          <li>Compares current stock against the forecast</li>
+          <li>Factors in supplier lead times</li>
+        </ul>
+      </div>
+      <div>
+        <ul>
+          <li>Checks if another outlet has excess to transfer</li>
+          <li>Assigns a priority level (Critical to Monitor)</li>
+          <li>Recommends specific quantities and actions</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ==================== BUSINESS IMPACT ==================== -->
+<section id="impact">
+  <h2>Business Impact</h2>
+  <p class="mb-20">Projected annual savings and operational improvements from implementing the forecasting system.</p>
+
+  <h3 class="mb-12">Revenue Impact</h3>
+  <div class="table-wrap mb-24">
+    <table>
+      <thead>
+        <tr><th>Category</th><th>Before</th><th>After</th><th>Savings</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="fw-600">Lost Revenue (Stockouts)</td>
+          <td style="color:var(--red)">$2,000,000</td>
+          <td style="color:var(--green)">$1,000,000</td>
+          <td style="color:var(--green);font-weight:700">$1,000,000</td>
+        </tr>
+        <tr>
+          <td class="fw-600">Holding Cost Waste</td>
+          <td style="color:var(--red)">$1,500,000</td>
+          <td style="color:var(--green)">$1,000,000</td>
+          <td style="color:var(--green);font-weight:700">$500,000</td>
+        </tr>
+        <tr style="background:rgba(16,185,129,.06)">
+          <td class="fw-600" style="color:var(--green)">Total Annual Savings</td>
+          <td></td>
+          <td></td>
+          <td style="color:var(--green);font-weight:800;font-size:1.1rem">$1,500,000</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3 class="mb-12">Operational Benefits</h3>
+  <div class="card">
+    <div class="grid-2">
+      <div>
+        <ul>
+          <li><strong>50% fewer stockouts</strong> &mdash; Proactive reordering prevents empty shelves before they happen</li>
+          <li><strong>33% lower holding costs</strong> &mdash; Right-sized inventory means less capital tied up in excess stock</li>
+          <li><strong>Automated decisions</strong> &mdash; Eliminates guesswork and manual ordering errors</li>
+          <li><strong>200 forecasts per week</strong> &mdash; Continuous monitoring across all 40 products &times; 5 outlets</li>
+        </ul>
+      </div>
+      <div>
+        <ul>
+          <li><strong>Inter-store transfers</strong> &mdash; Balance inventory across locations without purchasing new stock</li>
+          <li><strong>Reduced waste</strong> &mdash; Perishable items ordered more precisely, reducing expiration losses</li>
+          <li><strong>Better supplier relationships</strong> &mdash; Predictable, consistent order volumes improve vendor negotiations</li>
+          <li><strong>Data-driven culture</strong> &mdash; Replaces intuition-based decisions with evidence-based forecasting</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+  <div class="footer">
+    <h2>Thank You</h2>
+    <p class="text-muted mt-12" style="font-size:1.1rem">Questions?</p>
+  </div>
+</section>
+
+</div>
+
+</body>
+</html>

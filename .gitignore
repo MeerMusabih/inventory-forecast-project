@@ -1,0 +1,14 @@
+node_modules/
+dist/
+dist-ssr/
+__pycache__/
+*.pyc
+*.log
+.env
+.env.local
+.vscode/
+.idea/
+.DS_Store
+*.local
+backend_server.log
+inventory-forecast.zip
