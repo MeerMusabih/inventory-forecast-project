@@ -97,19 +97,19 @@ def generate_data(seed=54321):
         stock_profiles[outlet["id"]] = {}
         for profile in PRODUCT_PROFILES:
             r = rng()
-            if r < 0.08:
-                sp = StockProfile(0.3 + rng() * 0.4, 0, 0, True,
-                                  int(total_days * (0.3 + rng() * 0.4)), total_days)
-            elif r < 0.20:
-                sp = StockProfile(8 + rng() * 15, 4 + rng() * 4, 2.5 + rng() * 3, False, 0, 0)
-            elif r < 0.35:
-                sp = StockProfile(0.4 + rng() * 0.6, 10 + rng() * 8, 0.5 + rng() * 0.5, False, 0, 0)
-            elif r < 0.50:
+            if r < 0.05:
+                sp = StockProfile(0.5 + rng() * 0.5, 5 + rng() * 3, 1.5 + rng() * 1, True,
+                                  int(total_days * (0.3 + rng() * 0.4)), min(total_days, int(total_days * (0.3 + rng() * 0.4)) + 15))
+            elif r < 0.15:
+                sp = StockProfile(6 + rng() * 10, 4 + rng() * 3, 2 + rng() * 2, False, 0, 0)
+            elif r < 0.30:
+                sp = StockProfile(1 + rng() * 1.5, 7 + rng() * 5, 1 + rng() * 0.8, False, 0, 0)
+            elif r < 0.45:
                 start = int(total_days * (0.5 + rng() * 0.3))
-                sp = StockProfile(2 + rng() * 3, 7 + rng() * 5, 1 + rng() * 0.5, True,
-                                  start, min(total_days, start + int(20 + rng() * 40)))
+                sp = StockProfile(3 + rng() * 3, 5 + rng() * 4, 1.5 + rng() * 1, True,
+                                  start, min(total_days, start + int(10 + rng() * 15)))
             else:
-                sp = StockProfile(1.5 + rng() * 3, 5 + rng() * 6, 1 + rng() * 1.5, False, 0, 0)
+                sp = StockProfile(2 + rng() * 4, 4 + rng() * 4, 1.2 + rng() * 1, False, 0, 0)
             stock_profiles[outlet["id"]][profile["id"]] = sp
 
     stock = {}
@@ -176,11 +176,11 @@ def generate_data(seed=54321):
 
                 freq = int(sp.reorder_freq)
                 if not in_supply_issue and freq > 0 and d_idx % freq == int(rng() * freq):
-                    qty = int(profile["baseDemand"] * w * sp.reorder_qty_mult * (0.8 + rng() * 0.4))
+                    qty = int(profile["baseDemand"] * w * sp.reorder_qty_mult * (0.9 + rng() * 0.3))
                     stock[oid][pid] += qty
 
-                if stock[oid][pid] < profile["baseDemand"] * w * 0.3 * 0.3 and rng() < 0.4 and not in_supply_issue:
-                    stock[oid][pid] += int(profile["baseDemand"] * w * 5)
+                if stock[oid][pid] < profile["baseDemand"] * w * 0.5 and rng() < 0.6 and not in_supply_issue:
+                    stock[oid][pid] += int(profile["baseDemand"] * w * 6)
 
                 revenue = sold * profile["price"]
                 sales_rows.append({

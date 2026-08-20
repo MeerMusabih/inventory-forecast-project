@@ -116,42 +116,42 @@ export function generateData() {
       const r = rng()
       let sp: StockProfile
 
-      if (r < 0.08) {
+      if (r < 0.05) {
         sp = {
-          initialStockMultiplier: 0.3 + rng() * 0.4,
-          reorderFrequency: 0,
-          reorderQuantityMultiplier: 0,
+          initialStockMultiplier: 0.5 + rng() * 0.5,
+          reorderFrequency: 5 + rng() * 3,
+          reorderQuantityMultiplier: 1.5 + rng() * 1,
           hasSupplyIssue: true,
           supplyIssueStart: Math.floor(totalDays * (0.3 + rng() * 0.4)),
-          supplyIssueEnd: totalDays,
+          supplyIssueEnd: Math.min(totalDays, Math.floor(totalDays * (0.3 + rng() * 0.4)) + 15),
         }
-      } else if (r < 0.20) {
+      } else if (r < 0.15) {
         sp = {
-          initialStockMultiplier: 8 + rng() * 15,
-          reorderFrequency: 4 + rng() * 4,
-          reorderQuantityMultiplier: 2.5 + rng() * 3,
+          initialStockMultiplier: 6 + rng() * 10,
+          reorderFrequency: 4 + rng() * 3,
+          reorderQuantityMultiplier: 2 + rng() * 2,
           hasSupplyIssue: false,
           supplyIssueStart: 0,
           supplyIssueEnd: 0,
         }
-      } else if (r < 0.35) {
+      } else if (r < 0.30) {
         sp = {
-          initialStockMultiplier: 0.4 + rng() * 0.6,
-          reorderFrequency: 10 + rng() * 8,
-          reorderQuantityMultiplier: 0.5 + rng() * 0.5,
+          initialStockMultiplier: 1 + rng() * 1.5,
+          reorderFrequency: 7 + rng() * 5,
+          reorderQuantityMultiplier: 1 + rng() * 0.8,
           hasSupplyIssue: false,
           supplyIssueStart: 0,
           supplyIssueEnd: 0,
         }
-      } else if (r < 0.50) {
+      } else if (r < 0.45) {
         const start = Math.floor(totalDays * (0.5 + rng() * 0.3))
         sp = {
-          initialStockMultiplier: 2 + rng() * 3,
-          reorderFrequency: 7 + rng() * 5,
-          reorderQuantityMultiplier: 1 + rng() * 0.5,
+          initialStockMultiplier: 3 + rng() * 3,
+          reorderFrequency: 5 + rng() * 4,
+          reorderQuantityMultiplier: 1.5 + rng() * 1,
           hasSupplyIssue: true,
           supplyIssueStart: start,
-          supplyIssueEnd: Math.min(totalDays, start + Math.floor(20 + rng() * 40)),
+          supplyIssueEnd: Math.min(totalDays, start + Math.floor(10 + rng() * 15)),
         }
       } else {
         sp = {
@@ -245,13 +245,13 @@ export function generateData() {
 
         if (!inSupplyIssue && reorderDay) {
           const reorderQty = Math.round(
-            profile.baseDemand * outletWeight * sp.reorderQuantityMultiplier * (0.8 + rng() * 0.4)
+            profile.baseDemand * outletWeight * sp.reorderQuantityMultiplier * (0.9 + rng() * 0.3)
           )
           stock[outlet.id][profile.id] += reorderQty
         }
 
-        if (stock[outlet.id][profile.id] < profile.reorderPoint * 0.3 && rng() < 0.4 && !inSupplyIssue) {
-          const emergencyReorder = Math.round(profile.baseDemand * outletWeight * 5)
+        if (stock[outlet.id][profile.id] < profile.reorderPoint * 0.5 && rng() < 0.6 && !inSupplyIssue) {
+          const emergencyReorder = Math.round(profile.baseDemand * outletWeight * 6)
           stock[outlet.id][profile.id] += emergencyReorder
         }
 

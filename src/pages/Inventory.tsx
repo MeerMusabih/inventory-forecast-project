@@ -25,6 +25,7 @@ export default function Inventory() {
       avgDailySales: number
       estimatedStock: number
       daysRemaining: number
+      stockoutDays: number
       status: string
       trend: string
       totalReturns: number
@@ -46,6 +47,18 @@ export default function Inventory() {
         const returnRate = totalSold > 0 ? Math.round((totalReturned / totalSold) * 100 * 10) / 10 : 0
 
         if (avgSales < 0.5 && stock === 0) continue
+
+        let stockoutDays = 0
+        if (stock === 0 && avgSales > 0.5) {
+          const sortedInventory = inventory
+            .filter(i => i.productId === product.id && i.outletId === outlet.id)
+            .sort((a, b) => b.date.localeCompare(a.date))
+          for (const inv of sortedInventory) {
+            if (inv.closingStock === 0) stockoutDays++
+            else break
+          }
+        }
+
         const daysRemaining = avgSales > 0 ? stock / avgSales : stock > 0 ? 999 : 0
 
         let status = 'healthy'
@@ -69,6 +82,7 @@ export default function Inventory() {
           avgDailySales: Math.round(avgSales * 10) / 10,
           estimatedStock: stock,
           daysRemaining: Math.round(daysRemaining * 10) / 10,
+          stockoutDays,
           status,
           trend,
           totalReturns: totalReturned,
@@ -216,14 +230,20 @@ export default function Inventory() {
                   <td className="px-4 py-3 text-gray-700 font-medium">{row.estimatedStock}</td>
                   <td className="px-4 py-3 text-gray-600">{row.avgDailySales}</td>
                   <td className="px-4 py-3">
-                    <span className={clsx(
-                      'font-medium',
-                      row.daysRemaining < 3 ? 'text-red-600' :
-                      row.daysRemaining < 7 ? 'text-orange-600' :
-                      'text-gray-700'
-                    )}>
-                      {row.daysRemaining}
-                    </span>
+                    {row.estimatedStock === 0 && row.stockoutDays > 0 ? (
+                      <span className="font-medium text-red-600">
+                        Out of stock since {row.stockoutDays} days
+                      </span>
+                    ) : (
+                      <span className={clsx(
+                        'font-medium',
+                        row.daysRemaining < 3 ? 'text-red-600' :
+                        row.daysRemaining < 7 ? 'text-orange-600' :
+                        'text-gray-700'
+                      )}>
+                        {row.daysRemaining}
+                      </span>
+                    )}
                   </td>
                   <td className="px-4 py-3">
                     <span className={clsx(

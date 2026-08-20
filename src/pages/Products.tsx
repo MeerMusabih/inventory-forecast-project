@@ -44,12 +44,10 @@ export default function Products() {
           }
         }
 
-        const avgDaily = totalDemand / (outlets.length || 1)
-
         return {
           ...product,
           totalDemand: Math.round(totalDemand * 10) / 10,
-          avgDailyDemand: Math.round(avgDaily * 10) / 10,
+          avgDailyDemand: Math.round(totalDemand * 10) / 10,
           totalStock,
           minDaysRemaining: minDays === Infinity ? 0 : Math.round(minDays * 10) / 10,
           maxDaysRemaining: Math.round(maxDays * 10) / 10,
