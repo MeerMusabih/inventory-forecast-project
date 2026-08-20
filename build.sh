@@ -5,7 +5,7 @@ echo "=== Installing Node.js dependencies ==="
 npm install
 
 echo "=== Generating frontend data ==="
-node scripts/generate-static-data.mjs
+node scripts/generate-direct.mjs
 
 echo "=== Building React frontend ==="
 npx vite build
