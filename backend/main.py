@@ -12,6 +12,7 @@ from models.holt_winters import train_holt_winters, predict_holt_winters
 from models.arima_model import train_arima, predict_arima
 from models.xgboost_model import train_xgboost, predict_xgboost
 from models.evaluation import evaluate_all_models
+from models.demand_correction import correct_series_for_training
 from engine.inventory_optimization import optimize_inventory
 
 app = FastAPI(title="Inventory Forecast ML API", version="1.0.0")
@@ -84,10 +85,10 @@ def get_forecast(product_id: str, outlet_id: str, model_type: str = "all", steps
     if len(product_data) < 30:
         raise HTTPException(400, "Insufficient data")
 
-    series = pd.Series(product_data["units_sold"].values, index=product_data["date"])
-    train_size = max(30, int(len(series) * 0.8))
-    train_series = series.iloc[:train_size]
-    test_series = series.iloc[train_size:]
+    corrected_series = correct_series_for_training(product_data)
+    train_size = max(30, int(len(corrected_series) * 0.8))
+    train_series = corrected_series.iloc[:train_size]
+    test_series = corrected_series.iloc[train_size:]
 
     results = {}
 
@@ -141,7 +142,7 @@ def get_forecast(product_id: str, outlet_id: str, model_type: str = "all", steps
             results["xgboost"] = {"error": str(e)}
 
     future_dates = pd.date_range(
-        start=pd.Timestamp(series.index[-1]) + pd.Timedelta(days=1),
+        start=pd.Timestamp(corrected_series.index[-1]) + pd.Timedelta(days=1),
         periods=steps,
     ).strftime("%Y-%m-%d").tolist()
 
@@ -151,7 +152,7 @@ def get_forecast(product_id: str, outlet_id: str, model_type: str = "all", steps
         "train_size": train_size,
         "test_size": len(test_series),
         "future_dates": future_dates,
-        "actual": {"dates": series.index.tolist(), "values": series.values.tolist()},
+        "actual": {"dates": corrected_series.index.tolist(), "values": corrected_series.values.tolist()},
         "models": results,
     }
 
@@ -165,10 +166,10 @@ def compare_models(product_id: str, outlet_id: str):
     if len(product_data) < 60:
         raise HTTPException(400, "Need at least 60 days of data for comparison")
 
-    series = pd.Series(product_data["units_sold"].values, index=product_data["date"])
-    split = int(len(series) * 0.7)
-    train = series.iloc[:split]
-    test = series.iloc[split:]
+    corrected_series = correct_series_for_training(product_data)
+    split = int(len(corrected_series) * 0.7)
+    train = corrected_series.iloc[:split]
+    test = corrected_series.iloc[split:]
 
     comparison = evaluate_all_models(train, test, product_data)
 
@@ -204,11 +205,11 @@ def batch_forecast(steps: int = 14):
             pdata = df[mask].sort_values("date")
             if len(pdata) < 30:
                 continue
-            series = pd.Series(pdata["units_sold"].values, index=pdata["date"])
-            model = train_holt_winters(series)
+            corrected = correct_series_for_training(pdata)
+            model = train_holt_winters(corrected)
             pred = predict_holt_winters(model, steps)
             last_stock = float(pdata["closing_stock"].iloc[-1])
-            avg_demand = float(series.tail(30).mean())
+            avg_demand = float(corrected.tail(30).mean())
             days_left = last_stock / avg_demand if avg_demand > 0 else 0
             summary.append({
                 "product_id": product_id,
@@ -237,3 +238,8 @@ if DIST_DIR.exists():
         if file_path.is_file():
             return FileResponse(file_path)
         return FileResponse(DIST_DIR / "index.html")
+
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=False)

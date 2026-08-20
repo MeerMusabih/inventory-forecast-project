@@ -12,3 +12,5 @@ __pycache__/
 *.local
 backend_server.log
 inventory-forecast.zip
+.venv/
+venv/
