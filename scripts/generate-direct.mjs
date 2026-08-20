@@ -170,8 +170,8 @@ for (let pi = 0; pi < PRODUCTS.length; pi++) {
 
       const revenue = Math.round(sold * product.sellingPrice * 100) / 100;
 
-      SALES.push([pi, oi, di, sold, returned, revenue]);
-      INVENTORY.push([pi, oi, di, stock, 0]);
+      SALES.push([di, pi, oi, sold, revenue, returned]);
+      INVENTORY.push([di, pi, oi, stock, 0]);
     }
   }
 }
