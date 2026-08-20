@@ -31,7 +31,37 @@ export function generateRecommendations(
       const stock = getLatestStock(inventory, product.id, outlet.id)
       const daysRemaining = avgDemand > 0 ? stock / avgDemand : 0
 
-      if (daysRemaining < 2 && avgDemand > 3) {
+      let stockoutDays = 0
+      if (stock === 0 && avgDemand > 0.5) {
+        const sortedInventory = inventory
+          .filter(i => i.productId === product.id && i.outletId === outlet.id)
+          .sort((a, b) => b.date.localeCompare(a.date))
+        for (const inv of sortedInventory) {
+          if (inv.closingStock === 0) stockoutDays++
+          else break
+        }
+      }
+
+      if (stock === 0 && avgDemand > 0.5) {
+        const reorderQty = Math.round(avgDemand * 14)
+        recommendations.push({
+          id: nextId(),
+          type: 'critical_restock',
+          priority: 'critical',
+          productId: product.id,
+          productName: product.name,
+          outletId: outlet.id,
+          outletName: outlet.name,
+          message: `${product.name} at ${outlet.name} is out of stock since ${stockoutDays} days. Demand is ${Math.round(avgDemand * 10) / 10} units/day.`,
+          action: `Reorder approximately ${reorderQty} units immediately.`,
+          details: {
+            currentStock: stock,
+            predictedDemand: Math.round(avgDemand * 10) / 10,
+            daysRemaining: Math.round(daysRemaining * 10) / 10,
+            recommendedQty: reorderQty,
+          },
+        })
+      } else if (daysRemaining < 2 && avgDemand > 3) {
         const reorderQty = Math.round(avgDemand * 14)
         recommendations.push({
           id: nextId(),
