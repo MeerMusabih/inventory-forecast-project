@@ -1,4 +1,6 @@
 #!/bin/bash
+set -e
+
 echo ""
 echo "============================================"
 echo "  Inventory Forecast & Predictive Analytics"
@@ -10,7 +12,7 @@ echo ""
 echo "Checking Python..."
 if ! command -v python3 &> /dev/null; then
     echo "[ERROR] Python3 is not installed."
-    echo "Install with: sudo apt install python3 python3-pip"
+    echo "Install with: sudo apt install python3 python3-pip python3-venv"
     exit 1
 fi
 python3 --version
@@ -20,17 +22,23 @@ echo "[OK] Python3 found."
 echo "Checking Node.js..."
 if ! command -v node &> /dev/null; then
     echo "[ERROR] Node.js is not installed."
-    echo "Install from: https://nodejs.org/"
+    echo "Install with: curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash - && sudo apt install -y nodejs"
     exit 1
 fi
 node --version
 echo "[OK] Node.js found."
 echo ""
 
+# Create Python virtual environment
+echo "Setting up Python virtual environment..."
+python3 -m venv venv
+source venv/bin/activate
+echo "[OK] Virtual environment created and activated."
+
 # Install Python packages
 echo "Installing Python packages..."
 cd backend
-pip3 install -r requirements.txt
+pip install -r requirements.txt
 if [ $? -ne 0 ]; then
     echo "[ERROR] Failed to install Python packages."
     exit 1
@@ -75,5 +83,5 @@ echo "[OK] Frontend built."
 echo ""
 echo "============================================"
 echo "  Setup Complete!"
-echo "  Run ./start.sh to launch the app."
+echo "  Run: bash start.sh"
 echo "============================================"
