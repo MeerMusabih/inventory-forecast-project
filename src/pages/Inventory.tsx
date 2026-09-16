@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react'
 import { useFilteredData } from '../hooks/useFilteredData'
 import { calculateAverageDailySales, calculateSalesVelocity } from '../engine/forecast'
-import { useNavigate } from 'react-router-dom'
+import PageHeader from '../components/PageHeader'
+import { IconSearch } from '../components/icons'
 import clsx from 'clsx'
 
 type SortKey = 'product' | 'category' | 'stock' | 'avgSales' | 'daysRemaining' | 'status' | 'returnRate'
@@ -9,7 +10,6 @@ type SortDir = 'asc' | 'desc'
 
 export default function Inventory() {
   const { products, outlets, sales, inventory, salesByProductOutlet } = useFilteredData()
-  const navigate = useNavigate()
   const [search, setSearch] = useState('')
   const [sortKey, setSortKey] = useState<SortKey>('status')
   const [sortDir, setSortDir] = useState<SortDir>('asc')
@@ -99,10 +99,11 @@ export default function Inventory() {
 
     if (search) {
       const q = search.toLowerCase()
-      data = data.filter(r =>
-        r.productName.toLowerCase().includes(q) ||
-        r.category.toLowerCase().includes(q) ||
-        r.outletName.toLowerCase().includes(q)
+      data = data.filter(
+        r =>
+          r.productName.toLowerCase().includes(q) ||
+          r.category.toLowerCase().includes(q) ||
+          r.outletName.toLowerCase().includes(q)
       )
     }
 
@@ -133,7 +134,7 @@ export default function Inventory() {
 
   function toggleSort(key: SortKey) {
     if (sortKey === key) {
-      setSortDir(d => d === 'asc' ? 'desc' : 'asc')
+      setSortDir(d => (d === 'asc' ? 'desc' : 'asc'))
     } else {
       setSortKey(key)
       setSortDir('asc')
@@ -142,18 +143,18 @@ export default function Inventory() {
 
   const statusLabel: Record<string, string> = {
     critical: 'Critical',
-    low_stock: 'Low Stock',
+    low_stock: 'Low stock',
     healthy: 'Healthy',
     overstock: 'Overstock',
-    high_demand: 'High Demand',
+    high_demand: 'High demand',
   }
 
   const statusCls: Record<string, string> = {
-    critical: 'bg-red-100 text-red-700',
-    low_stock: 'bg-orange-100 text-orange-700',
-    healthy: 'bg-green-100 text-green-700',
-    overstock: 'bg-purple-100 text-purple-700',
-    high_demand: 'bg-blue-100 text-blue-700',
+    critical: 'badge-danger',
+    low_stock: 'badge-warn',
+    healthy: 'badge-success',
+    overstock: 'badge-brand',
+    high_demand: 'badge-neutral',
   }
 
   const trendIcon: Record<string, string> = {
@@ -162,54 +163,61 @@ export default function Inventory() {
     stable: '→',
   }
 
+  const columns: { key: SortKey; label: string; align?: string }[] = [
+    { key: 'product', label: 'Product' },
+    { key: 'category', label: 'Category' },
+    { key: 'stock', label: 'Outlet' },
+    { key: 'stock', label: 'Stock' },
+    { key: 'avgSales', label: 'Avg daily sales' },
+    { key: 'daysRemaining', label: 'Days remaining' },
+    { key: 'returnRate', label: 'Return rate' },
+    { key: 'status', label: 'Status' },
+  ]
+
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">Inventory Management</h1>
-        <p className="text-sm text-gray-500 mt-1">Detailed inventory status across all outlets</p>
+      <PageHeader
+        title="Inventory"
+        description="Stock health across every outlet — days of cover, return rate and demand trend per product."
+      />
+
+      <div className="card">
+        <div className="card-body flex items-center gap-4 flex-wrap">
+          <div className="relative">
+            <IconSearch width={15} height={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
+            <input
+              type="text"
+              placeholder="Search products, categories, outlets…"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              className="input pl-9 w-72"
+            />
+          </div>
+          <select
+            value={statusFilter}
+            onChange={e => setStatusFilter(e.target.value)}
+            className="select"
+          >
+            <option value="all">All statuses</option>
+            <option value="critical">Critical</option>
+            <option value="low_stock">Low stock</option>
+            <option value="high_demand">High demand</option>
+            <option value="healthy">Healthy</option>
+            <option value="overstock">Overstock</option>
+          </select>
+          <span className="badge-neutral ml-auto">{filtered.length} items</span>
+        </div>
       </div>
 
-      <div className="flex items-center gap-4 flex-wrap">
-        <input
-          type="text"
-          placeholder="Search products, categories, outlets..."
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          className="text-sm border border-gray-300 rounded-lg px-4 py-2 w-72 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none"
-        />
-        <select
-          value={statusFilter}
-          onChange={e => setStatusFilter(e.target.value)}
-          className="text-sm border border-gray-300 rounded-lg px-3 py-2 bg-white focus:ring-2 focus:ring-primary-500 outline-none"
-        >
-          <option value="all">All Statuses</option>
-          <option value="critical">Critical</option>
-          <option value="low_stock">Low Stock</option>
-          <option value="high_demand">High Demand</option>
-          <option value="healthy">Healthy</option>
-          <option value="overstock">Overstock</option>
-        </select>
-        <span className="text-sm text-gray-400">{filtered.length} items</span>
-      </div>
-
-      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+      <div className="card overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+          <table className="data-table">
             <thead>
-              <tr className="bg-gray-50 border-b border-gray-200">
-                {[
-                  { key: 'product' as SortKey, label: 'Product' },
-                  { key: 'category' as SortKey, label: 'Category' },
-                  { key: 'stock' as SortKey, label: 'Outlet' },
-                  { key: 'stock' as SortKey, label: 'Stock' },
-                  { key: 'avgSales' as SortKey, label: 'Avg Daily Sales' },
-                  { key: 'daysRemaining' as SortKey, label: 'Days Remaining' },
-                  { key: 'returnRate' as SortKey, label: 'Return Rate' },
-                  { key: 'status' as SortKey, label: 'Status' },
-                ].map((col, i) => (
+              <tr>
+                {columns.map((col, i) => (
                   <th
                     key={i}
-                    className="text-left px-4 py-3 font-medium text-gray-500 cursor-pointer hover:text-gray-700"
+                    className="cursor-pointer select-none hover:text-ink whitespace-nowrap"
                     onClick={() => toggleSort(col.key)}
                   >
                     {col.label} {sortKey === col.key ? (sortDir === 'asc' ? '↑' : '↓') : ''}
@@ -219,48 +227,40 @@ export default function Inventory() {
             </thead>
             <tbody>
               {filtered.slice(0, 200).map((row, i) => (
-                <tr
-                  key={`${row.productId}-${row.outletId}`}
-                  className="border-b border-gray-50 hover:bg-gray-50 cursor-pointer"
-                  onClick={() => navigate(`/products/${row.productId}`)}
-                >
-                  <td className="px-4 py-3 font-medium text-gray-800">{row.productName}</td>
-                  <td className="px-4 py-3 text-gray-500">{row.category}</td>
-                  <td className="px-4 py-3 text-gray-600">{row.outletName}</td>
-                  <td className="px-4 py-3 text-gray-700 font-medium">{row.estimatedStock}</td>
-                  <td className="px-4 py-3 text-gray-600">{row.avgDailySales}</td>
-                  <td className="px-4 py-3">
+                <tr key={`${row.productId}-${row.outletId}`}>
+                  <td className="font-medium text-ink whitespace-nowrap">{row.productName}</td>
+                  <td>{row.category}</td>
+                  <td>{row.outletName}</td>
+                  <td className="font-medium text-ink">{row.estimatedStock}</td>
+                  <td>{row.avgDailySales}</td>
+                  <td>
                     {row.estimatedStock === 0 && row.stockoutDays > 0 ? (
-                      <span className="font-medium text-red-600">
-                        Out of stock since {row.stockoutDays} days
-                      </span>
+                      <span className="font-medium text-danger">Out of stock · {row.stockoutDays}d</span>
                     ) : (
-                      <span className={clsx(
-                        'font-medium',
-                        row.daysRemaining < 3 ? 'text-red-600' :
-                        row.daysRemaining < 7 ? 'text-orange-600' :
-                        'text-gray-700'
-                      )}>
+                      <span
+                        className={clsx(
+                          'font-medium',
+                          row.daysRemaining < 3 ? 'text-danger' : row.daysRemaining < 7 ? 'text-warn' : 'text-ink-soft'
+                        )}
+                      >
                         {row.daysRemaining}
                       </span>
                     )}
                   </td>
-                  <td className="px-4 py-3">
-                    <span className={clsx(
-                      'text-sm font-medium',
-                      row.returnRate > 5 ? 'text-red-600' :
-                      row.returnRate > 3 ? 'text-orange-600' :
-                      'text-gray-600'
-                    )}>
+                  <td>
+                    <span
+                      className={clsx(
+                        'font-medium',
+                        row.returnRate > 5 ? 'text-danger' : row.returnRate > 3 ? 'text-warn' : 'text-ink-soft'
+                      )}
+                    >
                       {row.returnRate}%
                     </span>
                   </td>
-                  <td className="px-4 py-3">
+                  <td>
                     <div className="flex items-center gap-2">
-                      <span className={clsx('text-xs px-2 py-0.5 rounded-full font-medium', statusCls[row.status])}>
-                        {statusLabel[row.status]}
-                      </span>
-                      <span className="text-gray-400">{trendIcon[row.trend]}</span>
+                      <span className={statusCls[row.status]}>{statusLabel[row.status]}</span>
+                      <span className="text-muted">{trendIcon[row.trend]}</span>
                     </div>
                   </td>
                 </tr>

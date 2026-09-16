@@ -1,68 +1,44 @@
-import { useFilters } from '../../store/FilterContext'
-import { useData } from '../../store/DataContext'
-import { CATEGORIES } from '../../utils/formatters'
+import { useLocation } from 'react-router-dom'
+import { IconCheck } from '../icons'
+
+const titles: Record<string, { title: string; crumb: string }> = {
+  '/': { title: 'Dashboard', crumb: 'Overview' },
+  '/inventory': { title: 'Inventory', crumb: 'Overview' },
+  '/forecast': { title: 'Forecast', crumb: 'Planning' },
+  '/actual-transfers': { title: 'Actual Transfers', crumb: 'Planning' },
+  '/rop': { title: 'Reordering Point', crumb: 'Optimization' },
+}
 
 export default function TopBar() {
-  const {
-    selectedOutlet, setSelectedOutlet,
-    selectedCategory, setSelectedCategory,
-    dateRange, setDateRange,
-  } = useFilters()
-  const { outlets } = useData()
+  const { pathname } = useLocation()
+  const meta = titles[pathname] ?? { title: 'Inventory Intelligence', crumb: 'Home' }
+
+  const today = new Date().toLocaleDateString('en-US', {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  })
 
   return (
-    <header className="bg-white border-b border-gray-200 px-6 py-3 flex items-center gap-4 sticky top-0 z-20">
-      <div className="flex items-center gap-2">
-        <label className="text-xs font-medium text-gray-500">Outlet</label>
-        <select
-          value={selectedOutlet}
-          onChange={e => setSelectedOutlet(e.target.value)}
-          className="text-sm border border-gray-300 rounded-lg px-3 py-1.5 bg-white focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none"
-        >
-          <option value="all">All Outlets</option>
-          {outlets.map(o => (
-            <option key={o.id} value={o.id}>{o.name}</option>
-          ))}
-        </select>
-      </div>
+    <header className="sticky top-0 z-20 bg-canvas/80 backdrop-blur border-b border-line">
+      <div className="px-8 py-3.5 flex items-center gap-4">
+        <nav className="flex items-center gap-2 text-[13px] min-w-0">
+          <span className="font-semibold text-ink whitespace-nowrap">Inventory Intelligence</span>
+          <span className="text-muted/60">/</span>
+          <span className="text-muted whitespace-nowrap">{meta.crumb}</span>
+          <span className="text-muted/60">/</span>
+          <span className="text-primary-700 font-medium truncate">{meta.title}</span>
+        </nav>
 
-      <div className="flex items-center gap-2">
-        <label className="text-xs font-medium text-gray-500">Category</label>
-        <select
-          value={selectedCategory}
-          onChange={e => setSelectedCategory(e.target.value)}
-          className="text-sm border border-gray-300 rounded-lg px-3 py-1.5 bg-white focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none"
-        >
-          <option value="all">All Categories</option>
-          {CATEGORIES.map(c => (
-            <option key={c} value={c}>{c}</option>
-          ))}
-        </select>
-      </div>
-
-      <div className="flex items-center gap-2">
-        <label className="text-xs font-medium text-gray-500">From</label>
-        <input
-          type="date"
-          value={dateRange.start}
-          onChange={e => setDateRange({ ...dateRange, start: e.target.value })}
-          className="text-sm border border-gray-300 rounded-lg px-3 py-1.5 bg-white focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none"
-        />
-      </div>
-
-      <div className="flex items-center gap-2">
-        <label className="text-xs font-medium text-gray-500">To</label>
-        <input
-          type="date"
-          value={dateRange.end}
-          onChange={e => setDateRange({ ...dateRange, end: e.target.value })}
-          className="text-sm border border-gray-300 rounded-lg px-3 py-1.5 bg-white focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none"
-        />
-      </div>
-
-      <div className="ml-auto flex items-center gap-3">
-        <div className="text-xs text-gray-500 bg-gray-100 px-3 py-1.5 rounded-lg">
-          Demand Forecast — Prototype
+        <div className="ml-auto flex items-center gap-3">
+          <span className="hidden md:inline-flex items-center text-xs text-muted px-3 py-1.5 rounded-lg border border-line bg-surface">
+            {today}
+          </span>
+          <span className="inline-flex items-center gap-2 text-xs font-medium text-success bg-success-bg px-3 py-1.5 rounded-lg border border-success/15">
+            <IconCheck width={14} height={14} />
+            Live
+          </span>
         </div>
       </div>
     </header>

@@ -1,209 +1,289 @@
-import { useMemo } from 'react'
-import { useFilteredData } from '../hooks/useFilteredData'
-import { calculateKPIs, calculateOutletHealth, calculateProductDemandRanks } from '../engine/kpi'
-import { generateRecommendations } from '../engine/recommendations'
-import { detectTransferOpportunities } from '../engine/transfers'
-import { buildDemandHeatmap } from '../engine/heatmap'
-import KPICard from '../components/cards/KPICard'
-import SalesTrendChart from '../components/charts/SalesTrendChart'
-import TopProductsChart from '../components/charts/TopProductsChart'
-import OutletHealthChart from '../components/charts/OutletHealthChart'
-import DemandHeatmap from '../components/charts/DemandHeatmap'
-import { useFilters } from '../store/FilterContext'
-import { useData } from '../store/DataContext'
-import { useNavigate } from 'react-router-dom'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import clsx from 'clsx'
+import PageHeader from '../components/PageHeader'
+import {
+  IconDownload,
+  IconForecast,
+  IconTransfers,
+  IconAlert,
+  IconBranch,
+  IconSparkle,
+} from '../components/icons'
+import {
+  downloadContent,
+  exportDashboard,
+  getBranches,
+  getDashboardReport,
+  getForecastPeriods,
+  getProductCodes,
+  type BranchInfo,
+  type DashboardReport,
+  type ForecastPeriod,
+  type ProductCode,
+} from '../api/client'
 
 export default function Dashboard() {
-  const { products, outlets, sales, allProducts, allOutlets, allSales, inventory, salesByProductOutlet } = useFilteredData()
-  const { selectedOutlet } = useFilters()
-  const { outlets: allOutletList } = useData()
-  const navigate = useNavigate()
+  const [branches, setBranches] = useState<BranchInfo[]>([])
+  const [periods, setPeriods] = useState<ForecastPeriod[]>([])
+  const [products, setProducts] = useState<ProductCode[]>([])
 
-  const kpis = useMemo(() => calculateKPIs(products, outlets, sales, inventory, salesByProductOutlet), [products, outlets, sales, inventory, salesByProductOutlet])
-  const outletHealth = useMemo(() => calculateOutletHealth(allProducts, allOutlets, allSales, inventory), [allProducts, allOutlets, allSales, inventory])
-  const topProducts = useMemo(() => calculateProductDemandRanks(products, outlets, sales), [products, outlets, sales])
-  const recommendations = useMemo(() => generateRecommendations(products, outlets, sales, inventory, salesByProductOutlet), [products, outlets, sales, inventory, salesByProductOutlet])
-  const transfers = useMemo(() => detectTransferOpportunities(products, outlets, sales, inventory, salesByProductOutlet), [products, outlets, sales, inventory, salesByProductOutlet])
-  const heatmapCells = useMemo(() => buildDemandHeatmap(products, outlets, sales, salesByProductOutlet), [products, outlets, sales, salesByProductOutlet])
+  const [branch, setBranch] = useState('all')
+  const [period, setPeriod] = useState(1)
+  const [product, setProduct] = useState('all')
+  const [report, setReport] = useState<DashboardReport | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [activeExport, setActiveExport] = useState<null | 'csv' | 'json' | 'xml'>(null)
+  const [exportContent, setExportContent] = useState('')
 
-  const criticalRecs = recommendations.filter(r => r.priority === 'critical').slice(0, 5)
-  const topDemand = topProducts.slice(0, 10)
+  useEffect(() => {
+    getBranches().then(setBranches)
+    getForecastPeriods().then(setPeriods)
+    getProductCodes().then(setProducts)
+  }, [])
+
+  const loadReport = useCallback(async (b: string, p: number, pr: string) => {
+    setLoading(true)
+    try {
+      const r = await getDashboardReport(b, p, pr)
+      setReport(r)
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    loadReport(branch, period, product)
+  }, [branch, period, product, loadReport])
+
+  async function handleExport(format: 'csv' | 'json' | 'xml') {
+    setActiveExport(format)
+    setExportContent('')
+    try {
+      const content = await exportDashboard(format, branch, period, product)
+      setExportContent(content)
+      const mime = format === 'json' ? 'application/json' : format === 'xml' ? 'application/xml' : 'text/csv'
+      downloadContent(`dashboard-report-p${period}-${branch}.${format}`, content, mime)
+    } catch (e) {
+      setExportContent(e instanceof Error ? e.message : 'Export failed')
+    } finally {
+      setActiveExport(null)
+    }
+  }
+
+  const statusMeta = useMemo(
+    () => ({
+      accurate: { label: 'Accurate', cls: 'badge-success' },
+      'over-forecast': { label: 'Over forecast', cls: 'badge-warn' },
+      'under-forecast': { label: 'Under forecast', cls: 'badge-danger' },
+    }),
+    []
+  )
+
+  const summary = report?.summary
+
+  const fmt = (n: number | undefined) =>
+    n !== undefined ? Math.round(n).toLocaleString() : '—'
+
+  const cards = [
+    {
+      label: 'Total Forecast',
+      value: summary?.total_forecast,
+      icon: IconForecast,
+      accent: 'text-ink',
+      chip: 'bg-line-soft text-ink-soft',
+    },
+    {
+      label: 'Actual Received',
+      value: summary?.total_actual_received,
+      icon: IconTransfers,
+      accent: 'text-primary-700',
+      chip: 'bg-primary-50 text-primary-700',
+    },
+    {
+      label: 'Total SKUs',
+      value: summary?.total_skus,
+      icon: IconBranch,
+      accent: 'text-ink',
+      chip: 'bg-line-soft text-ink-soft',
+    },
+    {
+      label: 'Avg discrepancy / SKU',
+      value: summary?.average_discrepancy,
+      icon: IconAlert,
+      accent: 'text-warn',
+      chip: 'bg-warn-bg text-warn',
+      suffix: summary ? ' units' : undefined,
+    },
+    {
+      label: 'SKUs wrong forecast',
+      value: summary?.wrong_skus_count,
+      icon: IconSparkle,
+      accent: 'text-danger',
+      chip: 'bg-danger-bg text-danger',
+    },
+    {
+      label: 'Failure rate',
+      value: summary?.failure_rate,
+      icon: IconAlert,
+      accent: (summary?.failure_rate ?? 0) > 20 ? 'text-danger' : 'text-success',
+      chip: (summary?.failure_rate ?? 0) > 20 ? 'bg-danger-bg text-danger' : 'bg-success-bg text-success',
+      suffix: summary ? '%' : undefined,
+    },
+  ]
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">Inventory Intelligence Dashboard</h1>
-        <p className="text-sm text-gray-500 mt-1">
-          {selectedOutlet === 'all'
-            ? 'Company-wide overview across all outlets'
-            : `Viewing: ${allOutletList.find(o => o.id === selectedOutlet)?.name}`}
-        </p>
-      </div>
-
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-3 gap-4">
-        {kpis.map((kpi, i) => (
-          <KPICard key={i} {...kpi} />
-        ))}
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2">
-          <SalesTrendChart sales={sales} />
-        </div>
-        <div>
-          <OutletHealthChart data={outletHealth} />
-        </div>
-      </div>
-
-      {heatmapCells.length > 0 && (
-        <DemandHeatmap
-          cells={heatmapCells}
-          products={topProducts.slice(0, 15).map(p => p.productId)}
-          outlets={outlets.map(o => o.id)}
-        />
-      )}
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <TopProductsChart sales={sales} products={products} />
-
-        <div className="bg-white rounded-xl border border-gray-200 p-5">
-          <h3 className="text-sm font-semibold text-gray-700 mb-4">Top Demand Products</h3>
-          <div className="space-y-2">
-            {topDemand.map(p => (
-              <div
-                key={p.productId}
-                className="flex items-center justify-between py-2 px-3 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors"
-                onClick={() => navigate(`/products/${p.productId}`)}
+      <PageHeader
+        title="Dashboard"
+        description="Compare forecast against actual sales and received stock, and surface discrepancies per SKU."
+        actions={
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-muted mr-1">Export</span>
+            {(['csv', 'json', 'xml'] as const).map(f => (
+              <button
+                key={f}
+                onClick={() => handleExport(f)}
+                disabled={activeExport !== null}
+                className="btn btn-secondary btn-xs uppercase tracking-wide"
               >
-                <div className="flex items-center gap-3">
-                  <span className="w-6 h-6 rounded-full bg-primary-50 text-primary-700 text-xs font-bold flex items-center justify-center">
-                    {p.rank}
-                  </span>
-                  <div>
-                    <p className="text-sm font-medium text-gray-800">{p.productName}</p>
-                    <p className="text-xs text-gray-400">{p.category}</p>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <p className="text-sm font-semibold text-gray-700">{p.avgDailyDemand.toFixed(1)}</p>
-                  <p className="text-xs text-gray-400">units/day</p>
-                </div>
-              </div>
+                <IconDownload width={14} height={14} />
+                {activeExport === f ? '…' : f}
+              </button>
             ))}
           </div>
+        }
+      />
+
+      {/* Filters */}
+      <div className="card">
+        <div className="card-body grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div>
+            <label className="label">Branch</label>
+            <select value={branch} onChange={e => setBranch(e.target.value)} className="select w-full">
+              <option value="all">All Branches</option>
+              {branches.map(b => (
+                <option key={b.code} value={b.code}>
+                  {b.name} ({b.code})
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="label">Period</label>
+            <select value={period} onChange={e => setPeriod(Number(e.target.value))} className="select w-full">
+              {periods.map(p => (
+                <option key={p.period} value={p.period}>
+                  {p.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="label">Product</label>
+            <select value={product} onChange={e => setProduct(e.target.value)} className="select w-full">
+              <option value="all">All Products</option>
+              {products.map(p => (
+                <option key={p.code} value={p.code}>
+                  {p.name}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-white rounded-xl border border-gray-200 p-5">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-sm font-semibold text-gray-700">Outlet Overview</h3>
-            <button
-              onClick={() => navigate('/outlets')}
-              className="text-xs text-primary-600 hover:text-primary-700 font-medium"
-            >
-              View All →
-            </button>
+      {/* Summary cards */}
+      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4">
+        {cards.map(c => {
+          const Icon = c.icon
+          return (
+            <div key={c.label} className="card p-5">
+              <div className="flex items-start justify-between">
+                <p className="stat-label">{c.label}</p>
+                <span className={clsx('w-8 h-8 rounded-lg flex items-center justify-center', c.chip)}>
+                  <Icon width={16} height={16} />
+                </span>
+              </div>
+              <p className={clsx('stat-value mt-3', c.accent)}>
+                {fmt(c.value)}
+                {c.value !== undefined && c.suffix && <span className="unit">{c.suffix.trim()}</span>}
+              </p>
+            </div>
+          )
+        })}
+      </div>
+
+      {/* Report table */}
+      <div className="card overflow-hidden">
+        <div className="card-head">
+          <div>
+            <h3 className="card-title">SKU Comparison Report</h3>
+            <p className="text-xs text-muted mt-0.5">Forecast vs actual sales vs received stock</p>
           </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+          <span className="badge-neutral">{report?.report.length ?? 0} SKUs</span>
+        </div>
+
+        {loading ? (
+          <div className="p-12 text-center text-muted text-sm">Loading report…</div>
+        ) : report && report.report.length === 0 ? (
+          <div className="p-12 text-center text-muted text-sm">
+            No data for the selected filters. Upload forecast data and actual transfers first.
+          </div>
+        ) : (
+          <div className="overflow-x-auto max-h-[600px] overflow-y-auto">
+            <table className="data-table">
               <thead>
-                <tr className="border-b border-gray-200">
-                  <th className="text-left py-2 font-medium text-gray-500">Outlet</th>
-                  <th className="text-right py-2 font-medium text-gray-500">Products</th>
-                  <th className="text-right py-2 font-medium text-gray-500">Stock</th>
-                  <th className="text-right py-2 font-medium text-gray-500">Low</th>
-                  <th className="text-right py-2 font-medium text-gray-500">Over</th>
-                  <th className="text-right py-2 font-medium text-gray-500">Stockouts</th>
-                  <th className="text-right py-2 font-medium text-gray-500">Health</th>
+                <tr>
+                  <th>Item No</th>
+                  <th>Item Name</th>
+                  <th>Branch</th>
+                  <th className="text-right">Forecast</th>
+                  <th className="text-right">Actual Sales</th>
+                  <th className="text-right">Actual Received</th>
+                  <th className="text-right">Discrepancy</th>
+                  <th className="text-right">% Error</th>
+                  <th>Status</th>
                 </tr>
               </thead>
               <tbody>
-                {outletHealth.map(oh => (
-                  <tr
-                    key={oh.outletId}
-                    className="border-b border-gray-50 hover:bg-gray-50 cursor-pointer"
-                    onClick={() => navigate(`/outlets/${oh.outletId}`)}
-                  >
-                    <td className="py-2.5 font-medium text-gray-800">{oh.outletName}</td>
-                    <td className="py-2.5 text-right text-gray-600">{oh.totalProducts}</td>
-                    <td className="py-2.5 text-right text-gray-600">{oh.totalStock.toLocaleString()}</td>
-                    <td className="py-2.5 text-right">
-                      <span className={oh.lowStock > 20 ? 'text-red-600 font-semibold' : 'text-gray-600'}>
-                        {oh.lowStock}
-                      </span>
-                    </td>
-                    <td className="py-2.5 text-right text-gray-600">{oh.overstocked}</td>
-                    <td className="py-2.5 text-right">
-                      <span className={oh.predictedStockouts > 10 ? 'text-red-600 font-semibold' : 'text-gray-600'}>
-                        {oh.predictedStockouts}
-                      </span>
-                    </td>
-                    <td className="py-2.5 text-right">
-                      <span className={clsx(
-                        'inline-block px-2 py-0.5 rounded-full text-xs font-semibold',
-                        oh.healthScore >= 80 ? 'bg-green-50 text-green-700' :
-                        oh.healthScore >= 60 ? 'bg-yellow-50 text-yellow-700' :
-                        'bg-red-50 text-red-700'
-                      )}>
-                        {oh.healthScore}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
+                {report?.report.map(r => {
+                  const meta = statusMeta[r.status as keyof typeof statusMeta] ?? statusMeta.accurate
+                  return (
+                    <tr key={`${r.item_no}-${r.branch}`}>
+                      <td className="font-medium text-ink">{r.item_no}</td>
+                      <td>{r.item_name}</td>
+                      <td>{r.branch}</td>
+                      <td className="text-right font-medium text-ink">{fmt(r.forecast)}</td>
+                      <td className="text-right">{fmt(r.actual_sales)}</td>
+                      <td className="text-right">{fmt(r.actual_received)}</td>
+                      <td className={clsx('text-right font-semibold', r.discrepancy !== 0 ? 'text-warn' : 'text-success')}>
+                        {r.discrepancy > 0 ? '+' : ''}
+                        {fmt(r.discrepancy)}
+                      </td>
+                      <td className="text-right">{Math.round(r.pct_error)}%</td>
+                      <td>
+                        <span className={meta.cls}>{meta.label}</span>
+                      </td>
+                    </tr>
+                  )
+                })}
               </tbody>
             </table>
           </div>
-        </div>
-
-        <div className="bg-white rounded-xl border border-gray-200 p-5">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-sm font-semibold text-gray-700">Critical Alerts</h3>
-            <button
-              onClick={() => navigate('/recommendations')}
-              className="text-xs text-primary-600 hover:text-primary-700 font-medium"
-            >
-              View All →
-            </button>
-          </div>
-          <div className="space-y-3">
-            {criticalRecs.length === 0 && (
-              <p className="text-sm text-gray-400 py-4 text-center">No critical alerts</p>
-            )}
-            {criticalRecs.map(rec => (
-              <div key={rec.id} className="bg-red-50 border border-red-100 rounded-lg p-3">
-                <p className="text-sm font-medium text-red-800">{rec.message}</p>
-                <p className="text-xs text-red-600 mt-1">{rec.action}</p>
-                <div className="flex items-center gap-2 mt-2">
-                  <span className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded-full font-medium">
-                    {rec.outletName}
-                  </span>
-                  <span className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded-full font-medium">
-                    Critical
-                  </span>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {transfers.length > 0 && (
-            <>
-              <h3 className="text-sm font-semibold text-gray-700 mt-6 mb-3">Transfer Opportunities</h3>
-              <div className="space-y-2">
-                {transfers.slice(0, 3).map((t, i) => (
-                  <div key={i} className="bg-blue-50 border border-blue-100 rounded-lg p-3">
-                    <p className="text-sm font-medium text-blue-800">{t.productName}</p>
-                    <p className="text-xs text-blue-600 mt-1">
-                      {t.fromOutletName} → {t.toOutletName} ({t.suggestedTransfer} units)
-                    </p>
-                  </div>
-                ))}
-              </div>
-            </>
-          )}
-        </div>
+        )}
       </div>
+
+      {exportContent && (
+        <div className="card">
+          <div className="card-head">
+            <h3 className="card-title">Export preview</h3>
+            <span className="badge-neutral">{activeExport ?? 'done'}</span>
+          </div>
+          <pre className="text-xs text-ink-soft bg-canvas rounded-b-2xl p-5 max-h-64 overflow-auto whitespace-pre-wrap break-all">
+            {exportContent.slice(0, 4000)}
+          </pre>
+        </div>
+      )}
     </div>
   )
 }
