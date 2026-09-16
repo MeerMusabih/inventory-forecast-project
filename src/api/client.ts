@@ -406,6 +406,14 @@ export async function uploadAccurateForecastFile(file: File): Promise<{ inserted
   return postForm("/api/rop/forecast/upload", file);
 }
 
+export async function resetTestData(): Promise<{ ok: boolean; counts: Record<string, number> }> {
+  const res = await fetch(`${API_BASE}/api/system/test-data`, { method: "POST" });
+  if (!res.ok) {
+    throw new Error(`API error: ${res.status} ${res.statusText}`);
+  }
+  return res.json();
+}
+
 export async function getROPReport(params?: {
   service_level?: number;
   ordering_cost?: number;

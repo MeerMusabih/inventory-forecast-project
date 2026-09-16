@@ -1,5 +1,7 @@
+import { useState } from 'react'
 import { useLocation } from 'react-router-dom'
-import { IconCheck } from '../icons'
+import { IconCheck, IconUpload } from '../icons'
+import { resetTestData } from '../../api/client'
 
 const titles: Record<string, { title: string; crumb: string }> = {
   '/': { title: 'Dashboard', crumb: 'Overview' },
@@ -12,6 +14,8 @@ const titles: Record<string, { title: string; crumb: string }> = {
 export default function TopBar() {
   const { pathname } = useLocation()
   const meta = titles[pathname] ?? { title: 'Inventory Intelligence', crumb: 'Home' }
+  const [running, setRunning] = useState(false)
+  const [error, setError] = useState('')
 
   const today = new Date().toLocaleDateString('en-US', {
     weekday: 'short',
@@ -19,6 +23,19 @@ export default function TopBar() {
     month: 'short',
     year: 'numeric',
   })
+
+  const handleTest = async () => {
+    if (running) return
+    setRunning(true)
+    setError('')
+    try {
+      await resetTestData()
+      window.location.reload()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Reset failed')
+      setRunning(false)
+    }
+  }
 
   return (
     <header className="sticky top-0 z-20 bg-canvas/80 backdrop-blur border-b border-line">
@@ -32,6 +49,7 @@ export default function TopBar() {
         </nav>
 
         <div className="ml-auto flex items-center gap-3">
+          {error && <span className="text-xs text-danger">{error}</span>}
           <span className="hidden md:inline-flex items-center text-xs text-muted px-3 py-1.5 rounded-lg border border-line bg-surface">
             {today}
           </span>
@@ -39,6 +57,15 @@ export default function TopBar() {
             <IconCheck width={14} height={14} />
             Live
           </span>
+          <button
+            type="button"
+            onClick={handleTest}
+            disabled={running}
+            className="inline-flex items-center gap-2 text-xs font-semibold text-white bg-primary-700 hover:bg-primary-800 disabled:opacity-60 px-3.5 py-2 rounded-lg transition-colors"
+          >
+            <IconUpload width={14} height={14} className={running ? 'animate-spin' : ''} />
+            {running ? 'Resetting…' : 'Test System'}
+          </button>
         </div>
       </div>
     </header>

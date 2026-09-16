@@ -837,6 +837,190 @@ async def upload_accurate_forecast(file: UploadFile = File(...)):
     return {"inserted": inserted}
 
 
+SAMPLE_DIR = Path(__file__).resolve().parent.parent / "sample_data"
+
+
+def _rows_from_path(path: Path):
+    if path.name.lower().endswith((".xlsx", ".xls")):
+        return pd.read_excel(path).to_dict("records")
+    return pd.read_csv(path, encoding="utf-8-sig").to_dict("records")
+
+
+def _find_col(mapping, aliases):
+    for h, canon in mapping.items():
+        if canon in aliases:
+            return h
+    return None
+
+
+@app.post("/api/system/test-data")
+def reset_test_data():
+    """Clear all tables and reload the canonical sample_data set."""
+    conn = get_conn()
+    counts = {}
+    try:
+        conn.execute("DELETE FROM forecast_entries")
+        inserted = 0
+        for period in range(1, 7):
+            path = SAMPLE_DIR / f"forecast_p{period}.csv"
+            if not path.exists():
+                continue
+            rows = _rows_from_path(path)
+            mapping = _normalize_headers(list(rows[0].keys()))
+            item_no_col = _find_col(mapping, ["item_no"])
+            item_name_col = _find_col(mapping, ["item_name"])
+            branch_col = _find_col(mapping, ["branch"])
+            qty_col = _find_col(mapping, ["quantity"])
+            date_col = _find_col(mapping, ["date"])
+            to_insert = []
+            for r in rows:
+                item_no = str(r.get(item_no_col, "")).strip() if item_no_col else ""
+                if not item_no:
+                    continue
+                qty = 0
+                if qty_col:
+                    try:
+                        qty = float(r.get(qty_col) or 0)
+                    except (TypeError, ValueError):
+                        qty = 0
+                to_insert.append((
+                    period,
+                    item_no,
+                    str(r.get(item_name_col, "")) if item_name_col else "",
+                    str(r.get(branch_col, "")) if branch_col else "",
+                    qty,
+                    str(r.get(date_col, "")) if date_col else "",
+                ))
+            conn.executemany(
+                "INSERT INTO forecast_entries (period, item_no, item_name, branch, quantity, date) VALUES (?,?,?,?,?,?)",
+                to_insert,
+            )
+            inserted += len(to_insert)
+        counts["forecast"] = inserted
+
+        conn.execute("DELETE FROM actual_transfers")
+        rows = _rows_from_path(SAMPLE_DIR / "actual_transfers.csv")
+        mapping = _normalize_headers(list(rows[0].keys()))
+        branch_col = _find_col(mapping, ["branch"])
+        item_code_col = _find_col(mapping, ["item_no"])
+        item_name_col = _find_col(mapping, ["item_name"])
+        qty_col = _find_col(mapping, ["quantity"])
+        date_col = _find_col(mapping, ["date"])
+        to_insert = []
+        for r in rows:
+            item_code = str(r.get(item_code_col, "")).strip() if item_code_col else ""
+            if not item_code:
+                continue
+            qty = 0
+            if qty_col:
+                try:
+                    qty = float(r.get(qty_col) or 0)
+                except (TypeError, ValueError):
+                    qty = 0
+            to_insert.append((
+                str(r.get(branch_col, "")) if branch_col else "",
+                item_code,
+                str(r.get(item_name_col, "")) if item_name_col else "",
+                qty,
+                str(r.get(date_col, "")) if date_col else "",
+            ))
+        conn.executemany(
+            "INSERT INTO actual_transfers (branch_code, item_code, item_name, quantity, date) VALUES (?,?,?,?,?)",
+            to_insert,
+        )
+        counts["actual_transfers"] = len(to_insert)
+
+        conn.execute("DELETE FROM mrp_data")
+        rows = _rows_from_path(SAMPLE_DIR / "MRP_full.xlsx")
+        mapping = _normalize_headers(list(rows[0].keys()))
+        code_col = _find_col(mapping, ["item_no", "row_label", "code"])
+        name_col = _find_col(mapping, ["product_name", "item_name", "raw_material"])
+        req_col = _find_col(mapping, ["requirement_qty", "quantity", "mrp_monthly", "demand"])
+        unit_col = _find_col(mapping, ["unit"])
+        lt_col = _find_col(mapping, ["lead_time"])
+        sd_col = _find_col(mapping, ["sigma_demand"])
+        slt_col = _find_col(mapping, ["sigma_lead_time"])
+        sl_col = _find_col(mapping, ["service_level"])
+        price_col = _find_col(mapping, ["unit_price"])
+        oc_col = _find_col(mapping, ["ordering_cost"])
+        hc_col = _find_col(mapping, ["holding_cost"])
+        soh_col = _find_col(mapping, ["stock_on_hand"])
+        moq_col = _find_col(mapping, ["moq"])
+
+        def fnum(r, key, default=0.0):
+            if not key:
+                return default
+            try:
+                return float(r.get(key) or default)
+            except (TypeError, ValueError):
+                return default
+
+        to_insert = []
+        for r in rows:
+            name = str(r.get(name_col, "")).strip() if name_col else ""
+            code = str(r.get(code_col, "")).strip() if code_col else ""
+            if not name and not code:
+                continue
+            to_insert.append((
+                code,
+                name,
+                fnum(r, req_col),
+                str(r.get(unit_col, "")).strip() if unit_col else "",
+                fnum(r, lt_col, 1.0),
+                fnum(r, sd_col),
+                fnum(r, slt_col),
+                fnum(r, sl_col, 95.0),
+                fnum(r, price_col),
+                fnum(r, oc_col),
+                fnum(r, hc_col),
+                fnum(r, soh_col),
+                fnum(r, moq_col),
+            ))
+        conn.executemany(
+            "INSERT INTO mrp_data (code, product_name, mrp_monthly, unit, lead_time_month, sigma_demand, sigma_lead_time, service_level, unit_price, ordering_cost, holding_cost, stock_on_hand, moq) "
+            "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            to_insert,
+        )
+        counts["mrp"] = len(to_insert)
+
+        conn.execute("DELETE FROM accurate_forecast")
+        rows = _rows_from_path(SAMPLE_DIR / "accurate_forecast.csv")
+        mapping = _normalize_headers(list(rows[0].keys()))
+        item_no_col = _find_col(mapping, ["item_no"])
+        item_name_col = _find_col(mapping, ["item_name"])
+        branch_col = _find_col(mapping, ["branch"])
+        qty_col = _find_col(mapping, ["quantity"])
+        date_col = _find_col(mapping, ["date"])
+        inserted = 0
+        for r in rows:
+            item_no = str(r.get(item_no_col, "")).strip() if item_no_col else ""
+            if not item_no:
+                continue
+            qty = 0
+            if qty_col:
+                try:
+                    qty = float(r.get(qty_col) or 0)
+                except (TypeError, ValueError):
+                    qty = 0
+            conn.execute(
+                "INSERT INTO accurate_forecast (item_no, item_name, branch, quantity, date) VALUES (?,?,?,?,?)",
+                (
+                    item_no,
+                    str(r.get(item_name_col, "")) if item_name_col else "",
+                    str(r.get(branch_col, "")) if branch_col else "",
+                    qty,
+                    str(r.get(date_col, "")) if date_col else "",
+                ),
+            )
+            inserted += 1
+        counts["accurate_forecast"] = inserted
+
+        conn.commit()
+    finally:
+        conn.close()
+    return {"ok": True, "counts": counts}
+
+
 @app.get("/api/rop/report")
 def rop_report(
     service_level: float = 95.0,
