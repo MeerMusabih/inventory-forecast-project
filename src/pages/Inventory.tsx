@@ -237,14 +237,32 @@ export default function Inventory() {
                     {row.estimatedStock === 0 && row.stockoutDays > 0 ? (
                       <span className="font-medium text-danger">Out of stock · {row.stockoutDays}d</span>
                     ) : (
-                      <span
-                        className={clsx(
-                          'font-medium',
-                          row.daysRemaining < 3 ? 'text-danger' : row.daysRemaining < 7 ? 'text-warn' : 'text-ink-soft'
-                        )}
-                      >
-                        {row.daysRemaining}
-                      </span>
+                      <div className="space-y-1.5">
+                        <span
+                          className={clsx(
+                            'font-medium',
+                            row.daysRemaining < 3 ? 'text-danger' : row.daysRemaining < 7 ? 'text-warn' : 'text-ink-soft'
+                          )}
+                        >
+                          {row.daysRemaining}
+                        </span>
+                        <div className="flex items-center gap-2">
+                          <div className="h-1.5 w-20 rounded-full bg-line-soft overflow-hidden">
+                            <div
+                              className={clsx(
+                                'h-full rounded-full transition-all',
+                                row.daysRemaining < 3
+                                  ? 'bg-danger'
+                                  : row.daysRemaining < 7
+                                    ? 'bg-warn'
+                                    : 'bg-success'
+                              )}
+                              style={{ width: `${Math.min((row.daysRemaining / 30) * 100, 100)}%` }}
+                            />
+                          </div>
+                          <span className="text-[10px] text-muted whitespace-nowrap">days cover</span>
+                        </div>
+                      </div>
                     )}
                   </td>
                   <td>

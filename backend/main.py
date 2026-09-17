@@ -5,13 +5,12 @@ from fastapi.responses import FileResponse, Response
 import pandas as pd
 import numpy as np
 import math
-import statistics
 import json
 import csv
+import calendar
 from pathlib import Path
 from io import BytesIO, StringIO
 from typing import Optional
-from scipy import stats as scipy_stats
 
 from data.generator import generate_data, PRODUCT_PROFILES, OUTLETS
 from models.baseline import train_baseline, predict_baseline
@@ -289,7 +288,7 @@ def _normalize_headers(headers):
         )
         if key_alias in ("item_no", "itemno", "item", "item_number", "product_no", "product_code", "item_code", "sku", "code"):
             mapping[h] = "item_no"
-        elif key_alias in ("item_name", "itemname", "item,item", "product_name", "product", "name", "description"):
+        elif key_alias in ("item_name", "itemname", "item,item", "product_name", "product", "name", "description", "requirement_name", "name_of_requirement"):
             mapping[h] = "item_name"
         elif key_alias in ("branch", "branch_code", "branchname", "outlet", "outlet_code", "branch_name"):
             mapping[h] = "branch"
@@ -301,7 +300,7 @@ def _normalize_headers(headers):
             mapping[h] = "row_label"
         elif key_alias in ("product_name", "product", "material", "raw_material"):
             mapping[h] = "product_name"
-        elif key_alias in ("sum_of_requirement_quantities", "requirement_qty", "requirement", "mrp_monthly"):
+        elif key_alias in ("sum_of_requirement_quantities", "requirement_qty", "requirement_quantity", "requirement", "mrp_monthly"):
             mapping[h] = "requirement_qty"
         elif key_alias in ("unit", "uom"):
             mapping[h] = "unit"
@@ -319,7 +318,7 @@ def _normalize_headers(headers):
             mapping[h] = "ordering_cost"
         elif key_alias in ("holding_cost", "holding_cost_h", "h", "carrying_cost", "inventory_cost", "holding"):
             mapping[h] = "holding_cost"
-        elif key_alias in ("stock_on_hand", "stock", "on_hand", "current_stock", "opening_stock", "stockonthhand"):
+        elif key_alias in ("stock_on_hand", "stock", "on_hand", "quantity_on_hand", "current_stock", "opening_stock", "stockonthhand"):
             mapping[h] = "stock_on_hand"
         elif key_alias in ("moq", "min_order_qty", "minimum_order_qty", "moq_issue_supplier", "minimum_order_quantity"):
             mapping[h] = "moq"
@@ -362,11 +361,12 @@ def forecast_periods():
     first_dates = {r["period"]: r["first_date"] for r in rows}
     last_dates = {r["period"]: r["last_date"] for r in rows}
     conn.close()
+    period_names = {1: "March", 2: "April", 3: "May", 4: "June", 5: "July", 6: "August"}
     periods = []
     for p in range(1, 7):
         periods.append({
             "period": p,
-            "name": f"Period {p}",
+            "name": f"Period {p} ({period_names.get(p, '')})",
             "entries": counts.get(p, 0),
             "first_date": first_dates.get(p),
             "last_date": last_dates.get(p),
@@ -465,13 +465,28 @@ def add_actual_transfer(payload: dict):
 
 
 @app.get("/api/actual-transfers")
-def get_actual_transfers(branch: str = "", from_date: str = "", to_date: str = ""):
+def get_actual_transfers(branch: str = "", from_date: str = "", to_date: str = "", period: int = 0):
+    """Return actual transfers. Filter by branch, a forecast period (P1..P6),
+    or a from/to date range."""
     conn = get_conn()
     sql = "SELECT id, branch_code, item_code, item_name, quantity, date FROM actual_transfers WHERE 1=1"
     params = []
     if branch and branch != "all":
         sql += " AND branch_code = ?"
         params.append(branch)
+    if period:
+        dates = [
+            r["date"] for r in conn.execute(
+                "SELECT date FROM forecast_entries WHERE period = ?", (period,)
+            ).fetchall() if r["date"]
+        ]
+        if dates:
+            start = min(dates)[:10]
+            y, m = int(start[:4]), int(start[5:7])
+            last_day = calendar.monthrange(y, m)[1]
+            end = f"{start[:8]}{last_day:02d}"
+            sql += " AND date >= ? AND date <= ?"
+            params.extend([start, end])
     if from_date:
         sql += " AND date >= ?"
         params.append(from_date)
@@ -482,6 +497,15 @@ def get_actual_transfers(branch: str = "", from_date: str = "", to_date: str = "
     rows = conn.execute(sql, params).fetchall()
     conn.close()
     return [dict(r) for r in rows]
+
+
+@app.get("/api/actual-transfers/export")
+def export_actual_transfers(format: str = "csv", branch: str = "", period: int = 0,
+                            from_date: str = "", to_date: str = ""):
+    data = get_actual_transfers(branch, from_date, to_date, period)
+    fieldnames = ["id", "branch_code", "item_code", "item_name", "quantity", "date"]
+    filename = f"actual-transfers-p{period}" if period else "actual-transfers"
+    return _serialize_report(data, fieldnames, format, filename)
 
 
 @app.post("/api/actual-transfers/upload")
@@ -555,6 +579,15 @@ def dashboard_report(
         f_params.extend([product, product])
     forecast_rows = conn.execute(f_sql, f_params).fetchall()
 
+    # Derive the period's date window (e.g. March = 2026-03-01..2026-03-31)
+    period_dates = [r["date"] for r in forecast_rows if r["date"]]
+    period_start = min(period_dates)[:10] if period_dates else ""
+    period_end = ""
+    if period_start:
+        y, m = int(period_start[:4]), int(period_start[5:7])
+        last_day = calendar.monthrange(y, m)[1]
+        period_end = f"{period_start[:8]}{last_day:02d}"
+
     a_params = []
     a_sql = "SELECT branch_code, item_code, item_name, quantity, date FROM actual_transfers WHERE 1=1"
     if branch != "all":
@@ -563,6 +596,12 @@ def dashboard_report(
     if product != "all":
         a_sql += " AND (item_code = ? OR item_name = ?)"
         a_params.extend([product, product])
+    if period_start:
+        a_sql += " AND date >= ?"
+        a_params.append(period_start)
+    if period_dates:
+        a_sql += " AND date <= ?"
+        a_params.append(period_end)
     if from_date:
         a_sql += " AND date >= ?"
         a_params.append(from_date)
@@ -720,10 +759,6 @@ def _esc(s):
     return str(s).replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace('"', "&quot;")
 
 
-def _z_score(service_level):
-    return scipy_stats.norm.ppf(float(service_level) / 100.0)
-
-
 @app.post("/api/rop/mrp/upload")
 async def upload_mrp(file: UploadFile = File(...)):
     rows = _parse_upload_file(file)
@@ -830,6 +865,49 @@ async def upload_accurate_forecast(file: UploadFile = File(...)):
                 float(r.get(qty_col, 0) or 0),
                 str(r.get(date_col, "")) if date_col else "",
             ),
+        )
+        inserted += 1
+    conn.commit()
+    conn.close()
+    return {"inserted": inserted}
+
+
+@app.post("/api/rop/stock/upload")
+async def upload_stock(file: UploadFile = File(...)):
+    """Replace the stock-on-hand snapshot used by the ROP report."""
+    rows = _parse_upload_file(file)
+    if not rows:
+        raise HTTPException(400, "File is empty")
+    mapping = _normalize_headers(list(rows[0].keys()))
+
+    def col(aliases):
+        for h, canon in mapping.items():
+            if canon in aliases:
+                return h
+        return None
+
+    code_col = col(["item_no", "row_label", "code"])
+    name_col = col(["item_name", "product_name"])
+    qty_col = col(["quantity", "stock_on_hand"])
+
+    if not code_col or not qty_col:
+        raise HTTPException(400, "Missing required columns: item code and stock on hand")
+
+    conn = get_conn()
+    conn.execute("DELETE FROM stock_on_hand")
+    inserted = 0
+    for r in rows:
+        code = str(r.get(code_col, "")).strip()
+        if not code:
+            continue
+        qty = r.get(qty_col, 0)
+        try:
+            qty = float(qty)
+        except (TypeError, ValueError):
+            qty = 0
+        conn.execute(
+            "INSERT INTO stock_on_hand (item_code, item_name, quantity) VALUES (?,?,?)",
+            (code, str(r.get(name_col, "")) if name_col else "", qty),
         )
         inserted += 1
     conn.commit()
@@ -1015,6 +1093,34 @@ def reset_test_data():
             inserted += 1
         counts["accurate_forecast"] = inserted
 
+        conn.execute("DELETE FROM stock_on_hand")
+        rows = _rows_from_path(SAMPLE_DIR / "stock_on_hand.csv")
+        mapping = _normalize_headers(list(rows[0].keys()))
+        item_code_col = _find_col(mapping, ["item_no", "item_code", "code", "row_label"])
+        item_name_col = _find_col(mapping, ["item_name", "product_name", "raw_material"])
+        qty_col = _find_col(mapping, ["quantity", "stock_on_hand", "on_hand"])
+        to_insert = []
+        for r in rows:
+            item_code = str(r.get(item_code_col, "")).strip() if item_code_col else ""
+            if not item_code:
+                continue
+            qty = 0
+            if qty_col:
+                try:
+                    qty = float(r.get(qty_col) or 0)
+                except (TypeError, ValueError):
+                    qty = 0
+            to_insert.append((
+                item_code,
+                str(r.get(item_name_col, "")) if item_name_col else "",
+                qty,
+            ))
+        conn.executemany(
+            "INSERT INTO stock_on_hand (item_code, item_name, quantity) VALUES (?,?,?)",
+            to_insert,
+        )
+        counts["stock_on_hand"] = len(to_insert)
+
         conn.commit()
     finally:
         conn.close()
@@ -1022,101 +1128,50 @@ def reset_test_data():
 
 
 @app.get("/api/rop/report")
-def rop_report(
-    service_level: float = 95.0,
-    ordering_cost: float = 0.0,
-    holding_cost: float = 0.0,
-    default_lead_time: float = 1.0,
-):
-    """Generate the ROP table comparing MRP vs Stock on Hand.
-    Optional global params fill in for rows where the MRP file left them blank.
+def rop_report():
+    """Compare MRP monthly requirement against stock on hand.
+
+    - SAFE (green): stock on hand covers the requirement.
+    - ORDER (red): short - order_qty tells how much more to order.
+    Stock comes from the uploaded stock_on_hand snapshot; a row with no stock
+    entry counts as 0 (short).
     """
     conn = get_conn()
-    mrp_rows = conn.execute("SELECT * FROM mrp_data").fetchall()
-    fc_rows = conn.execute("SELECT item_no, quantity FROM accurate_forecast").fetchall()
-
-    # Estimate stock on hand from the core inventory data when available
-    stock_by_name = {}
-    try:
-        df = get_data()
-        latest_idx = df.groupby("product_id")["date"].idxmax()
-        latest_snapshot = df.loc[latest_idx]
-        for _, row in latest_snapshot.iterrows():
-            key = str(row["product_id"])
-            stock_by_name[key] = float(row.get("closing_stock", 0) or 0)
-    except Exception:
-        pass
-
-    # Demand std per product from accurate forecast (per item_no)
-    demand_std_map = {}
-    demand_vals = {}
-    for r in fc_rows:
-        demand_vals.setdefault(r["item_no"], []).append(float(r["quantity"] or 0))
-    for k, v in demand_vals.items():
-        demand_std_map[k] = statistics.pstdev(v) if len(v) > 1 else 0.0
+    mrp_rows = conn.execute("SELECT code, product_name, mrp_monthly FROM mrp_data").fetchall()
+    stock_map = {
+        r["item_code"]: float(r["quantity"] or 0)
+        for r in conn.execute("SELECT item_code, quantity FROM stock_on_hand").fetchall()
+    }
+    conn.close()
 
     result = []
     for row in mrp_rows:
+        code = str(row["code"] or "").strip() or str(row["product_name"] or "").strip()
         demand = float(row["mrp_monthly"] or 0)
-        lead_time = float(row["lead_time_month"] or 0) or default_lead_time
-        sigma_demand = float(row["sigma_demand"] or 0) or demand_std_map.get(row["code"] or row["product_name"], 0)
-        sigma_lead = float(row["sigma_lead_time"] or 0)
-        service_level = float(row["service_level"] or 0) or service_level
-        unit_price = float(row["unit_price"] or 0)
-        ordering_cost = float(row["ordering_cost"] or 0) or ordering_cost
-        holding_cost = float(row["holding_cost"] or 0) or holding_cost
-        moq = float(row["moq"] or 0)
+        on_hand = stock_map.get(code, 0)
 
-        z = _z_score(service_level)
-        # Safety stock = Z * sqrt(LT * sigma_d^2 + demand^2 * sigma_LT^2)
-        variance = lead_time * sigma_demand ** 2 + demand ** 2 * sigma_lead ** 2
-        safety_stock = z * math.sqrt(variance) if variance > 0 else 0
-        rop_monthly = demand * lead_time + safety_stock
-        annual_demand = demand * 12
-        eoq = math.sqrt((2 * annual_demand * ordering_cost) / holding_cost) if holding_cost > 0 and ordering_cost > 0 else 0
-        stock_on_hand = float(row["stock_on_hand"] or 0)
-        if stock_on_hand == 0:
-            stock_on_hand = stock_by_name.get(row["code"] or row["product_name"], 0)
-
-        if stock_on_hand >= rop_monthly:
-            action = "SAFE - no order needed"
-            notes = "Stock covers ROP"
+        if on_hand >= demand:
+            action = "SAFE - enough stock"
+            notes = "Stock covers requirement"
+            order_qty = 0
         else:
-            order_qty = rop_monthly - stock_on_hand
-            if moq and order_qty < moq:
-                order_qty = moq
-            action = f"ORDER {math.ceil(order_qty)} units"
-            notes = "Below ROP - reorder required"
-
-        inv_rop_cost = rop_monthly * unit_price
-        inv_cost_ss = safety_stock * unit_price * holding_cost
+            order_qty = math.ceil(demand - on_hand)
+            action = f"ORDER {order_qty} units"
+            notes = f"Order {order_qty} more units"
 
         result.append({
-            "code": row["code"],
+            "code": code,
             "raw_material": row["product_name"],
             "mrp_monthly": round(demand, 2),
-            "lead_time_month": round(lead_time, 2),
-            "sigma_demand": round(sigma_demand, 2),
-            "sigma_lead_time": round(sigma_lead, 2),
-            "service_level": round(service_level, 1),
-            "z_score": round(z, 4),
-            "safety_stock": round(safety_stock, 2),
-            "rop_per_month": round(rop_monthly, 2),
-            "notes": notes,
-            "unit_price": round(unit_price, 2),
-            "ordering_cost": round(ordering_cost, 2),
-            "holding_cost": round(holding_cost, 2),
-            "eoq": round(eoq, 2),
-            "stock_on_hand": round(stock_on_hand, 2),
+            "stock_on_hand": round(on_hand, 2),
             "action": action,
-            "moq": round(moq, 2),
-            "inventory_rop_cost": round(inv_rop_cost, 2),
-            "inv_cost_ss": round(inv_cost_ss, 2),
+            "order_more": order_qty,
+            "notes": notes,
         })
 
-    result.sort(key=lambda x: x["rop_per_month"] - x["stock_on_hand"], reverse=True)
+    # Largest shortages first
+    result.sort(key=lambda x: x["mrp_monthly"] - x["stock_on_hand"], reverse=True)
     safe = sum(1 for r in result if r["action"].startswith("SAFE"))
-    conn.close()
     return {
         "total": len(result),
         "safe": safe,
@@ -1126,20 +1181,11 @@ def rop_report(
 
 
 @app.get("/api/rop/report/export")
-def export_rop_report(
-    format: str = "csv",
-    service_level: float = 95.0,
-    ordering_cost: float = 50.0,
-    holding_cost: float = 0.1,
-    default_lead_time: float = 1.0,
-):
-    data = rop_report(service_level, ordering_cost, holding_cost, default_lead_time)
+def export_rop_report(format: str = "csv"):
+    data = rop_report()
     report = data["report"]
     fieldnames = [
-        "code", "raw_material", "mrp_monthly", "lead_time_month", "sigma_demand",
-        "sigma_lead_time", "service_level", "z_score", "safety_stock", "rop_per_month",
-        "notes", "unit_price", "ordering_cost", "holding_cost", "eoq",
-        "stock_on_hand", "action", "moq", "inventory_rop_cost", "inv_cost_ss",
+        "code", "raw_material", "mrp_monthly", "stock_on_hand", "action", "order_more",
     ]
     return _serialize_report(report, fieldnames, format, "rop-report")
 

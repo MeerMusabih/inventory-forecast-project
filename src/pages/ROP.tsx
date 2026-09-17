@@ -7,77 +7,45 @@ import {
   downloadContent,
   exportROPReport,
   getROPReport,
-  uploadAccurateForecastFile,
   uploadMRPFile,
+  uploadStockFile,
   type ROPReport,
 } from '../api/client'
 
 const COLUMN_HELP: { key: string; label: string; hint: string }[] = [
-  { key: 'code', label: 'Code', hint: 'Item / raw material code' },
-  { key: 'raw_material', label: 'Raw Material', hint: 'Product name' },
-  { key: 'mrp_monthly', label: 'MRP Monthly', hint: 'Monthly requirement qty (from MRP)' },
-  { key: 'lead_time_month', label: 'Lead Time (Month)', hint: 'Supplier lead time in months' },
-  { key: 'sigma_demand', label: 'σ Demand (Month)', hint: 'Std dev of demand, auto-estimated from accurate forecast' },
-  { key: 'sigma_lead_time', label: 'σ Lead Time (Month)', hint: 'Std dev of lead time' },
-  { key: 'service_level', label: 'Service Level %', hint: 'Target fill rate (default 95%)' },
-  { key: 'z_score', label: 'Z-Score', hint: 'Z value for the service level' },
-  { key: 'safety_stock', label: 'Safety Stock', hint: 'Z × √(LT·σ²d + D²·σ²LT)' },
-  { key: 'rop_per_month', label: 'ROP / Month', hint: 'Demand × LT + Safety Stock' },
-  { key: 'notes', label: 'Notes', hint: 'Auto status note' },
-  { key: 'unit_price', label: 'Unit Price', hint: 'Price per unit' },
-  { key: 'ordering_cost', label: 'Ordering Cost (Co)', hint: 'Cost per order' },
-  { key: 'holding_cost', label: 'Holding Cost (H)', hint: 'Carrying cost per unit' },
-  { key: 'eoq', label: 'EOQ', hint: '√(2 × Annual Demand × Co / H)' },
-  { key: 'stock_on_hand', label: 'Stock on Hand', hint: 'Current on-hand, auto from inventory' },
-  { key: 'action', label: 'Action', hint: 'Safe or order quantity' },
-  { key: 'moq', label: 'MOQ', hint: 'Minimum order qty from supplier' },
-  { key: 'inventory_rop_cost', label: 'Inventory ROP Cost', hint: 'ROP × Unit Price' },
-  { key: 'inv_cost_ss', label: 'Inv Cost of SS', hint: 'Safety Stock × Price × Holding' },
+  { key: 'code', label: 'Item Code', hint: 'Item / row label from the MRP file' },
+  { key: 'raw_material', label: 'Item Name', hint: 'Requirement name from the MRP file' },
+  { key: 'mrp_monthly', label: 'MRP Monthly Qty', hint: 'Monthly requirement quantity (from MRP)' },
+  { key: 'stock_on_hand', label: 'Hands On Stock', hint: 'Current stock, from the uploaded stock file' },
+  { key: 'action', label: 'Action', hint: 'GREEN when stock covers the requirement, RED when short' },
+  { key: 'order_more', label: 'Order More', hint: 'How many more units to order when short' },
 ]
 
 export default function ROP() {
   const [report, setReport] = useState<ROPReport | null>(null)
   const [loading, setLoading] = useState(false)
-  const [fcStatus, setFcStatus] = useState<string | null>(null)
   const [mrpStatus, setMrpStatus] = useState<string | null>(null)
+  const [stockStatus, setStockStatus] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [serviceLevel, setServiceLevel] = useState(95)
-  const [orderingCost, setOrderingCost] = useState(50)
-  const [holdingCost, setHoldingCost] = useState(0.1)
-  const [defaultLeadTime, setDefaultLeadTime] = useState(1)
   const [exporting, setExporting] = useState<null | 'csv' | 'json' | 'xml'>(null)
   const [exportError, setExportError] = useState<string | null>(null)
 
-  const load = useCallback(
-    async (silent = false) => {
-      if (!silent) setLoading(true)
-      try {
-        const r = await getROPReport({
-          service_level: serviceLevel,
-          ordering_cost: orderingCost,
-          holding_cost: holdingCost,
-          default_lead_time: defaultLeadTime,
-        })
-        setReport(r)
-        setError(null)
-      } catch (e) {
-        setError(e instanceof Error ? e.message : 'Failed to generate ROP report')
-      } finally {
-        setLoading(false)
-      }
-    },
-    [serviceLevel, orderingCost, holdingCost, defaultLeadTime]
-  )
+  const load = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true)
+    try {
+      const r = await getROPReport()
+      setReport(r)
+      setError(null)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to generate ROP report')
+    } finally {
+      setLoading(false)
+    }
+  }, [])
 
   useEffect(() => {
     load(true)
   }, [load])
-
-  async function handleForecastUpload(file: File) {
-    const r = await uploadAccurateForecastFile(file)
-    setFcStatus(`Uploaded ${r.inserted} accurate forecast records`)
-    return r
-  }
 
   async function handleMRPUpload(file: File) {
     const r = await uploadMRPFile(file)
@@ -86,17 +54,18 @@ export default function ROP() {
     return r
   }
 
+  async function handleStockUpload(file: File) {
+    const r = await uploadStockFile(file)
+    setStockStatus(`Uploaded ${r.inserted} stock records`)
+    await load(true)
+    return r
+  }
+
   async function handleExport(format: 'csv' | 'json' | 'xml') {
     setExporting(format)
     setExportError(null)
     try {
-      const params = {
-        service_level: serviceLevel,
-        ordering_cost: orderingCost,
-        holding_cost: holdingCost,
-        default_lead_time: defaultLeadTime,
-      }
-      const content = await exportROPReport(format, params)
+      const content = await exportROPReport(format)
       const mime = format === 'json' ? 'application/json' : format === 'xml' ? 'application/xml' : 'text/csv'
       downloadContent(`rop-report.${format}`, content, mime)
     } catch (e) {
@@ -110,7 +79,7 @@ export default function ROP() {
     <div className="space-y-6">
       <PageHeader
         title="Reordering Point"
-        description="Upload the accurate forecast and MRP file, then generate a reorder report comparing MRP demand against stock on hand."
+        description="Upload the MRP and stock files, then compare MRP requirement against stock on hand: enough (green) or short (red)."
         actions={
           report && report.report.length > 0 ? (
             <div className="flex items-center gap-2">
@@ -131,26 +100,13 @@ export default function ROP() {
         }
       />
 
-      {/* Uploads + params */}
+      {/* Uploads */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
         <div className="space-y-3">
           <FileUpload
             compact
-            title="Upload accurate forecast"
-            hint="CSV / Excel — item no, item name, branch, quantity, date"
-            onUpload={handleForecastUpload}
-          />
-          {fcStatus && (
-            <p className="text-xs text-success flex items-center gap-1.5 px-1">
-              <IconCheck width={13} height={13} /> {fcStatus}
-            </p>
-          )}
-        </div>
-        <div className="space-y-3">
-          <FileUpload
-            compact
             title="Upload MRP file"
-            hint="Excel / CSV — row label, product name, sum of requirement quantities, unit"
+            hint="Excel / CSV — row label, requirement name, requirement quantity, unit"
             onUpload={handleMRPUpload}
           />
           {mrpStatus && (
@@ -159,64 +115,30 @@ export default function ROP() {
             </p>
           )}
         </div>
+        <div className="space-y-3">
+          <FileUpload
+            compact
+            title="Upload stock file"
+            hint="Excel / CSV — item code, item name, stock on hand"
+            onUpload={handleStockUpload}
+          />
+          {stockStatus && (
+            <p className="text-xs text-success flex items-center gap-1.5 px-1">
+              <IconCheck width={13} height={13} /> {stockStatus}
+            </p>
+          )}
+        </div>
 
         <div className="card">
-          <div className="card-head">
-            <h3 className="card-title">Global parameters</h3>
-          </div>
-          <div className="card-body space-y-4">
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="label">Service level %</label>
-                <input
-                  type="number"
-                  value={serviceLevel}
-                  min={50}
-                  max={99.99}
-                  step={0.1}
-                  onChange={e => setServiceLevel(Number(e.target.value))}
-                  className="input w-full"
-                />
-              </div>
-              <div>
-                <label className="label">Lead time (months)</label>
-                <input
-                  type="number"
-                  value={defaultLeadTime}
-                  min={0.1}
-                  step={0.1}
-                  onChange={e => setDefaultLeadTime(Number(e.target.value))}
-                  className="input w-full"
-                />
-              </div>
-              <div>
-                <label className="label">Ordering cost (Co)</label>
-                <input
-                  type="number"
-                  value={orderingCost}
-                  min={0}
-                  step={5}
-                  onChange={e => setOrderingCost(Number(e.target.value))}
-                  className="input w-full"
-                />
-              </div>
-              <div>
-                <label className="label">Holding cost (H)</label>
-                <input
-                  type="number"
-                  value={holdingCost}
-                  min={0}
-                  step={0.01}
-                  onChange={e => setHoldingCost(Number(e.target.value))}
-                  className="input w-full"
-                />
-              </div>
-            </div>
+          <div className="card-body">
+            <p className="text-xs text-muted mb-3">
+              Compare MRP monthly requirement against hands-on stock per item. Missing stock is treated as 0 (short).
+            </p>
             <button onClick={() => load()} disabled={loading} className="btn-primary w-full">
               <IconSparkle width={15} height={15} />
               {loading ? 'Generating…' : 'Generate ROP report'}
             </button>
-            {error && <p className="text-xs text-danger">{error}</p>}
+            {error && <p className="text-xs text-danger mt-2">{error}</p>}
           </div>
         </div>
       </div>
@@ -230,7 +152,7 @@ export default function ROP() {
           </div>
           <div className="card p-5">
             <div className="flex items-start justify-between">
-              <p className="stat-label">Safe — stock covers ROP</p>
+              <p className="stat-label">Safe — stock covers requirement</p>
               <span className="w-8 h-8 rounded-lg bg-success-bg text-success flex items-center justify-center">
                 <IconCheck width={16} height={16} />
               </span>
@@ -255,7 +177,7 @@ export default function ROP() {
           <div className="card-head">
             <div>
               <h3 className="card-title">ROP report</h3>
-              <p className="text-xs text-muted mt-0.5">Hover a column header for the formula</p>
+              <p className="text-xs text-muted mt-0.5">Green = enough stock, red = short. Hover a column header for details.</p>
             </div>
           </div>
           {exportError && <p className="px-5 pt-3 text-xs text-danger">{exportError}</p>}
@@ -276,25 +198,13 @@ export default function ROP() {
                     <td className="font-medium text-ink whitespace-nowrap">{r.code}</td>
                     <td className="whitespace-nowrap">{r.raw_material}</td>
                     <td className="text-right text-ink">{r.mrp_monthly.toLocaleString()}</td>
-                    <td className="text-right">{r.lead_time_month}</td>
-                    <td className="text-right">{r.sigma_demand}</td>
-                    <td className="text-right">{r.sigma_lead_time}</td>
-                    <td className="text-right">{r.service_level}%</td>
-                    <td className="text-right">{r.z_score}</td>
-                    <td className="text-right font-medium text-ink">{r.safety_stock.toLocaleString()}</td>
-                    <td className="text-right font-bold text-primary-700">{r.rop_per_month.toLocaleString()}</td>
-                    <td className="text-muted whitespace-nowrap">{r.notes}</td>
-                    <td className="text-right">{r.unit_price.toLocaleString()}</td>
-                    <td className="text-right">{r.ordering_cost.toLocaleString()}</td>
-                    <td className="text-right">{r.holding_cost}</td>
-                    <td className="text-right">{r.eoq.toLocaleString()}</td>
                     <td className="text-right font-medium text-ink">{r.stock_on_hand.toLocaleString()}</td>
                     <td>
                       <span className={r.action.startsWith('SAFE') ? 'badge-success' : 'badge-danger'}>{r.action}</span>
                     </td>
-                    <td className="text-right">{r.moq.toLocaleString()}</td>
-                    <td className="text-right">{r.inventory_rop_cost.toLocaleString()}</td>
-                    <td className="text-right">{r.inv_cost_ss.toLocaleString()}</td>
+                    <td className="text-right font-bold text-primary-700">
+                      {r.order_more > 0 ? r.order_more.toLocaleString() : '—'}
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -303,11 +213,26 @@ export default function ROP() {
         </div>
       )}
 
+      {loading && !report && (
+        <div className="card p-12 flex flex-col items-center justify-center text-center gap-3">
+          <div className="animate-[logoPulse_1.8s_ease-in-out_infinite]">
+            <span className="w-12 h-12 rounded-2xl bg-gradient-to-br from-primary-700 to-shell flex items-center justify-center">
+              <IconSparkle width={20} height={20} className="text-primary-200" />
+            </span>
+          </div>
+          <p className="text-sm font-semibold text-ink-soft">Generating ROP report…</p>
+          <p className="text-xs text-muted">Comparing MRP requirement against stock on hand</p>
+        </div>
+      )}
+
       {!report && !loading && (
-        <div className="card p-12 text-center">
+        <div className="card p-12 flex flex-col items-center justify-center text-center gap-3">
+          <span className="empty-state-icon">
+            <IconAlert width={20} height={20} />
+          </span>
+          <p className="text-sm font-semibold text-ink">No ROP report yet</p>
           <p className="text-muted text-sm max-w-lg mx-auto">
-            No ROP report yet. Upload an MRP file (Excel/CSV with row label, product name, sum of requirement
-            quantities, unit), optionally the accurate forecast, then click Generate ROP report.
+            Upload the MRP file and the stock file, then click Generate ROP report.
           </p>
         </div>
       )}

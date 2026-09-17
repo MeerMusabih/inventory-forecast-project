@@ -1,15 +1,21 @@
 import { useCallback, useEffect, useState } from 'react'
 import PageHeader from '../components/PageHeader'
 import FileUpload from '../components/FileUpload'
-import { IconPlus, IconClose, IconTransfers, IconBranch } from '../components/icons'
+import { IconPlus, IconClose, IconTransfers, IconBranch, IconDownload } from '../components/icons'
 import {
   addActualTransferEntry,
+  downloadContent,
+  exportActualTransfers,
   getActualTransfers,
   getBranches,
+  getForecastPeriods,
   uploadActualTransfersFile,
   type ActualTransfer,
   type BranchInfo,
+  type ForecastPeriod,
 } from '../api/client'
+
+type DateMode = 'period' | 'duration'
 
 interface DraftRow {
   key: number
@@ -22,21 +28,29 @@ interface DraftRow {
 
 export default function ActualTransfers() {
   const [branches, setBranches] = useState<BranchInfo[]>([])
+  const [periods, setPeriods] = useState<ForecastPeriod[]>([])
+  const [mode, setMode] = useState<DateMode>('period')
   const [branch, setBranch] = useState('all')
+  const [period, setPeriod] = useState(1)
   const [fromDate, setFromDate] = useState('')
   const [toDate, setToDate] = useState('')
   const [transfers, setTransfers] = useState<ActualTransfer[]>([])
   const [loading, setLoading] = useState(false)
+  const [exporting, setExporting] = useState<null | 'csv' | 'json' | 'xml'>(null)
+  const [exportError, setExportError] = useState<string | null>(null)
   const [showModal, setShowModal] = useState(false)
   const [drafts, setDrafts] = useState<DraftRow[]>([])
   const [branchFilter, setBranchFilter] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
 
-  const refresh = useCallback(async (b: string, f: string, t: string) => {
+  const refresh = useCallback(async (b: string, m: DateMode, p: number, f: string, t: string) => {
     setLoading(true)
     try {
-      const data = await getActualTransfers(b, f, t)
+      const data = await getActualTransfers(
+        b,
+        m === 'period' ? { period: p } : { fromDate: f, toDate: t }
+      )
       setTransfers(data)
     } finally {
       setLoading(false)
@@ -45,14 +59,33 @@ export default function ActualTransfers() {
 
   useEffect(() => {
     getBranches().then(setBranches)
+    getForecastPeriods().then(setPeriods)
   }, [])
 
   useEffect(() => {
-    refresh(branch, fromDate, toDate)
-  }, [branch, fromDate, toDate, refresh])
+    refresh(branch, mode, period, fromDate, toDate)
+  }, [branch, mode, period, fromDate, toDate, refresh])
 
   function applyFilters() {
-    refresh(branch, fromDate, toDate)
+    refresh(branch, mode, period, fromDate, toDate)
+  }
+
+  async function handleExport(format: 'csv' | 'json' | 'xml') {
+    setExporting(format)
+    setExportError(null)
+    try {
+      const content = await exportActualTransfers(
+        format,
+        branch,
+        mode === 'period' ? { period } : { fromDate, toDate }
+      )
+      const mime = format === 'json' ? 'application/json' : format === 'xml' ? 'application/xml' : 'text/csv'
+      downloadContent(`actual-transfers.${format}`, content, mime)
+    } catch (e) {
+      setExportError(e instanceof Error ? e.message : 'Export failed')
+    } finally {
+      setExporting(null)
+    }
   }
 
   function handleUpload() {
@@ -111,17 +144,43 @@ export default function ActualTransfers() {
 
   const totalQty = transfers.reduce((s, t) => s + t.quantity, 0)
   const activeBranchName = branch === 'all' ? 'All branches' : branches.find(b => b.code === branch)?.name || branch
+  const activePeriod = periods.find(p => p.period === period)
 
   return (
     <div className="space-y-6">
       <PageHeader
         title="Actual Transfers"
-        description="Stock received at each branch. Filter by branch and date range, or record incoming transfers."
+        description="Stock received at each branch. Filter by period or date range, export the report, or record incoming transfers."
         actions={
-          <button onClick={handleUpload} className="btn-primary">
-            <IconPlus width={15} height={15} />
-            Record transfer
-          </button>
+          <div className="flex items-center gap-3 flex-wrap">
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-muted mr-1">Export</span>
+              {(['csv', 'json', 'xml'] as const).map(f => (
+                <button
+                  key={f}
+                  onClick={() => handleExport(f)}
+                  disabled={exporting !== null}
+                  className="btn btn-secondary btn-xs uppercase tracking-wide"
+                >
+                  <IconDownload width={14} height={14} />
+                  {exporting === f ? '…' : f}
+                </button>
+              ))}
+            </div>
+            <button onClick={handleUpload} className="btn-primary">
+              <IconPlus width={15} height={15} />
+              Record transfer
+            </button>
+            <FileUpload
+              inline
+              title="Bulk upload"
+              onUpload={async file => {
+                const r = await uploadActualTransfersFile(file)
+                await applyFilters()
+                return r
+              }}
+            />
+          </div>
         }
       />
 
@@ -139,14 +198,36 @@ export default function ActualTransfers() {
               ))}
             </select>
           </div>
-          <div>
-            <label className="label">From</label>
-            <input type="date" value={fromDate} onChange={e => setFromDate(e.target.value)} className="input" />
+          <div className="min-w-40">
+            <label className="label">Filter by</label>
+            <select value={mode} onChange={e => setMode(e.target.value as DateMode)} className="select w-full">
+              <option value="period">Period</option>
+              <option value="duration">Duration</option>
+            </select>
           </div>
-          <div>
-            <label className="label">To</label>
-            <input type="date" value={toDate} onChange={e => setToDate(e.target.value)} className="input" />
-          </div>
+          {mode === 'period' ? (
+            <div className="min-w-44">
+              <label className="label">Period</label>
+              <select value={period} onChange={e => setPeriod(Number(e.target.value))} className="select w-full">
+                {periods.map(p => (
+                  <option key={p.period} value={p.period}>
+                    {p.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          ) : (
+            <>
+              <div>
+                <label className="label">From</label>
+                <input type="date" value={fromDate} onChange={e => setFromDate(e.target.value)} className="input" />
+              </div>
+              <div>
+                <label className="label">To</label>
+                <input type="date" value={toDate} onChange={e => setToDate(e.target.value)} className="input" />
+              </div>
+            </>
+          )}
           <button onClick={applyFilters} className="btn-dark">
             Generate report
           </button>
@@ -182,30 +263,19 @@ export default function ActualTransfers() {
           </div>
           <p className="text-lg font-semibold text-ink mt-3">{activeBranchName}</p>
           <p className="text-xs text-muted mt-0.5">
-            {fromDate || 'any'} → {toDate || 'any'}
+            {mode === 'period'
+              ? (activePeriod?.name || `Period ${period}`)
+              : `${fromDate || 'any'} → ${toDate || 'any'}`}
           </p>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-1">
-          <FileUpload
-            compact
-            title="Bulk upload transfers"
-            hint="CSV / Excel / JSON — branch code, item code, quantity, date"
-            onUpload={async file => {
-              const r = await uploadActualTransfersFile(file)
-              await applyFilters()
-              return r
-            }}
-          />
+      <div className="card overflow-hidden">
+        <div className="card-head">
+          <h3 className="card-title">Transfer report</h3>
+          <span className="badge-neutral">{transfers.length.toLocaleString()} rows</span>
         </div>
-
-        <div className="lg:col-span-2 card overflow-hidden">
-          <div className="card-head">
-            <h3 className="card-title">Transfer report</h3>
-            <span className="badge-neutral">{transfers.length.toLocaleString()} rows</span>
-          </div>
+        {exportError && <p className="px-5 pt-3 text-xs text-danger">{exportError}</p>}
           <div className="overflow-x-auto max-h-[600px] overflow-y-auto">
             <table className="data-table">
               <thead>
@@ -220,12 +290,30 @@ export default function ActualTransfers() {
               <tbody>
                 {loading ? (
                   <tr>
-                    <td colSpan={5} className="text-center py-10 text-muted">Loading…</td>
+                    <td colSpan={5}>
+                      <div className="space-y-2.5 px-4 py-4">
+                        {Array.from({ length: 6 }).map((_, i) => (
+                          <div key={i} className="flex gap-4">
+                            <div className="skeleton h-4 w-16" />
+                            <div className="skeleton h-4 w-24" />
+                            <div className="skeleton h-4 w-36" />
+                            <div className="skeleton h-4 w-12 ml-auto" />
+                            <div className="skeleton h-4 w-28" />
+                          </div>
+                        ))}
+                      </div>
+                    </td>
                   </tr>
                 ) : transfers.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="text-center py-10 text-muted">
-                      No transfer records match the selected filters.
+                    <td colSpan={5} className="text-center py-12 text-muted">
+                      <span className="empty-state-icon">
+                        <IconTransfers width={18} height={18} />
+                      </span>
+                      <span className="block text-sm font-semibold text-ink mt-2">No transfers found</span>
+                      <span className="block text-xs text-muted mt-1">
+                        No transfer records match the selected filters.
+                      </span>
                     </td>
                   </tr>
                 ) : (
@@ -242,7 +330,6 @@ export default function ActualTransfers() {
               </tbody>
             </table>
           </div>
-        </div>
       </div>
 
       {/* Upload modal */}

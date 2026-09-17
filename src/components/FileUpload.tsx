@@ -8,9 +8,10 @@ interface FileUploadProps {
   hint?: string
   onUpload: (file: File) => Promise<{ inserted: number; skipped?: number }>
   compact?: boolean
+  inline?: boolean
 }
 
-export default function FileUpload({ accept = '.csv,.xlsx,.xls,.json', title, hint, onUpload, compact }: FileUploadProps) {
+export default function FileUpload({ accept = '.csv,.xlsx,.xls,.json', title, hint, onUpload, compact, inline }: FileUploadProps) {
   const inputRef = useRef<HTMLInputElement>(null)
   const [error, setError] = useState<string | null>(null)
   const [uploading, setUploading] = useState(false)
@@ -30,6 +31,33 @@ export default function FileUpload({ accept = '.csv,.xlsx,.xls,.json', title, hi
     } finally {
       setUploading(false)
     }
+  }
+
+  if (inline) {
+    return (
+      <div
+        className="inline-flex items-center gap-2 text-sm font-medium rounded-xl px-4 py-2.5 border border-line bg-surface text-ink-soft hover:border-primary-400 hover:text-ink transition-colors cursor-pointer"
+        onClick={() => inputRef.current?.click()}
+      >
+        <input
+          ref={inputRef}
+          type="file"
+          accept={accept}
+          className="hidden"
+          onChange={e => handleFile(e.target.files?.[0])}
+        />
+        <IconUpload width={15} height={15} />
+        {uploading ? (
+          <span className="text-primary-700">Uploading…</span>
+        ) : result ? (
+          <span className="text-success">{result}</span>
+        ) : error ? (
+          <span className="text-danger">{error}</span>
+        ) : (
+          title
+        )}
+      </div>
+    )
   }
 
   return (

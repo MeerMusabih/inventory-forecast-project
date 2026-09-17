@@ -112,7 +112,6 @@ export default function Dashboard() {
       icon: IconAlert,
       accent: 'text-warn',
       chip: 'bg-warn-bg text-warn',
-      suffix: summary ? ' units' : undefined,
     },
     {
       label: 'SKUs wrong forecast',
@@ -197,14 +196,14 @@ export default function Dashboard() {
         {cards.map(c => {
           const Icon = c.icon
           return (
-            <div key={c.label} className="card p-5">
+            <div key={c.label} className="card p-5 hover:shadow-raise hover:-translate-y-0.5 transition-all">
               <div className="flex items-start justify-between">
                 <p className="stat-label">{c.label}</p>
-                <span className={clsx('w-8 h-8 rounded-lg flex items-center justify-center', c.chip)}>
-                  <Icon width={16} height={16} />
+                <span className={clsx('stat-icon rounded-full', c.chip)}>
+                  <Icon width={17} height={17} />
                 </span>
               </div>
-              <p className={clsx('stat-value mt-3', c.accent)}>
+              <p className={clsx('stat-number mt-4', c.accent)}>
                 {fmt(c.value)}
                 {c.value !== undefined && c.suffix && <span className="unit">{c.suffix.trim()}</span>}
               </p>
@@ -224,10 +223,37 @@ export default function Dashboard() {
         </div>
 
         {loading ? (
-          <div className="p-12 text-center text-muted text-sm">Loading report…</div>
+          <div className="overflow-x-auto">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  {['Item No', 'Item Name', 'Branch', 'Forecast', 'Actual Sales', 'Actual Received', 'Discrepancy', '% Error', 'Status'].map(h => (
+                    <th key={h}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <tr key={i}>
+                    {Array.from({ length: 9 }).map((_, j) => (
+                      <td key={j}>
+                        <div className="skeleton h-4 w-16 max-w-full" />
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         ) : report && report.report.length === 0 ? (
-          <div className="p-12 text-center text-muted text-sm">
-            No data for the selected filters. Upload forecast data and actual transfers first.
+          <div className="empty-state">
+            <span className="empty-state-icon">
+              <IconAlert width={20} height={20} />
+            </span>
+            <p className="text-sm font-semibold text-ink">No data for the selected filters</p>
+            <p className="text-xs text-muted mt-1 max-w-sm">
+              Upload forecast data and actual transfers first, then revisit this report.
+            </p>
           </div>
         ) : (
           <div className="overflow-x-auto max-h-[600px] overflow-y-auto">

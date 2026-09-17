@@ -195,7 +195,19 @@ export default function Forecast() {
                 <tbody>
                   {loading ? (
                     <tr>
-                      <td colSpan={5} className="text-center py-10 text-muted">Loading…</td>
+                      <td colSpan={5}>
+                        <div className="space-y-2.5 px-4 py-4">
+                          {Array.from({ length: 6 }).map((_, i) => (
+                            <div key={i} className="flex gap-4">
+                              <div className="skeleton h-4 w-20" />
+                              <div className="skeleton h-4 w-40" />
+                              <div className="skeleton h-4 w-16" />
+                              <div className="skeleton h-4 w-12 ml-auto" />
+                              <div className="skeleton h-4 w-28" />
+                            </div>
+                          ))}
+                        </div>
+                      </td>
                     </tr>
                   ) : visible.length === 0 ? (
                     <tr>

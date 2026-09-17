@@ -134,3 +134,32 @@ export const IconCalendar = (p: IconProps) => (
     <path d="M3.5 10h17M8 3v4M16 3v4" />
   </Base>
 )
+
+export const IconLogo = (p: IconProps) => (
+  <Base {...p}>
+    <path d="M13.6 2.4a9.6 9.6 0 1 0 8 8 7.4 7.4 0 0 1-8-8z" />
+    <path d="M13.4 6.2a2.6 2.6 0 0 0 1.7.1" />
+  </Base>
+)
+
+export const IconMenu = (p: IconProps) => (
+  <Base {...p}>
+    <path d="M4 6.5h16M4 12h16M4 17.5h16" />
+  </Base>
+)
+
+export const IconBell = (p: IconProps) => (
+  <Base {...p}>
+    <path d="M6 16.5v-5a6 6 0 0 1 12 0v5l1.2 1.8H4.8z" />
+    <path d="M10 20h4" />
+  </Base>
+)
+
+export const IconWheat = (p: IconProps) => (
+  <Base {...p}>
+    <path d="M12 15.5V3.4" />
+    <path d="M12 4c-1.8 0-2.6 1.9-2.6 3.1S10.2 9.4 12 9.4s2.6-1 2.6-2.2S13.8 4 12 4z" />
+    <path d="M12 8c-1.9 0-2.9 1.7-2.9 2.9s1 2.2 2.9 2.2 2.9-.9 2.9-2.1S13.9 8 12 8z" />
+    <path d="M9 3 6.6 2M15 3l2.4-1M8.4 10.2 6.2 9.6M15.6 10.2 17.8 9.6M10.2 13.6l-1.9 1M13.8 13.6l1.9 1" />
+  </Base>
+)

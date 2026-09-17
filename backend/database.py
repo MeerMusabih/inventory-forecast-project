@@ -58,6 +58,13 @@ def init_db():
             date TEXT,
             uploaded_at TEXT DEFAULT (datetime('now'))
         );
+        CREATE TABLE IF NOT EXISTS stock_on_hand (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            item_code TEXT NOT NULL,
+            item_name TEXT,
+            quantity REAL DEFAULT 0,
+            uploaded_at TEXT DEFAULT (datetime('now'))
+        );
     """)
     conn.commit()
     conn.close()

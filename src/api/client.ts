@@ -246,23 +246,10 @@ export interface ROPRow {
   code: string;
   raw_material: string;
   mrp_monthly: number;
-  lead_time_month: number;
-  sigma_demand: number;
-  sigma_lead_time: number;
-  service_level: number;
-  z_score: number;
-  safety_stock: number;
-  rop_per_month: number;
-  notes: string;
-  unit_price: number;
-  ordering_cost: number;
-  holding_cost: number;
-  eoq: number;
   stock_on_hand: number;
   action: string;
-  moq: number;
-  inventory_rop_cost: number;
-  inv_cost_ss: number;
+  order_more: number;
+  notes: string;
 }
 
 export interface ROPReport {
@@ -320,14 +307,28 @@ export async function clearForecast(period: number): Promise<{ cleared: number }
 
 export async function getActualTransfers(
   branch: string,
-  fromDate: string,
-  toDate: string
+  opts: { period?: number; fromDate?: string; toDate?: string } = {}
 ): Promise<ActualTransfer[]> {
   const params = new URLSearchParams();
   if (branch && branch !== "all") params.set("branch", branch);
-  if (fromDate) params.set("from_date", fromDate);
-  if (toDate) params.set("to_date", toDate);
+  if (opts.period) params.set("period", String(opts.period));
+  if (opts.fromDate) params.set("from_date", opts.fromDate);
+  if (opts.toDate) params.set("to_date", opts.toDate);
   return fetchJSON(`/api/actual-transfers?${params.toString()}`);
+}
+
+export async function exportActualTransfers(
+  format: "csv" | "json" | "xml",
+  branch: string,
+  opts: { period?: number; fromDate?: string; toDate?: string } = {}
+): Promise<string> {
+  const params = new URLSearchParams();
+  params.set("format", format);
+  if (branch && branch !== "all") params.set("branch", branch);
+  if (opts.period) params.set("period", String(opts.period));
+  if (opts.fromDate) params.set("from_date", opts.fromDate);
+  if (opts.toDate) params.set("to_date", opts.toDate);
+  return fetchText(`/api/actual-transfers/export?${params.toString()}`);
 }
 
 export async function addActualTransferEntry(payload: {
@@ -369,23 +370,8 @@ export async function exportDashboard(
   return fetchText(`/api/export?format=${format}&branch=${encodeURIComponent(branch)}&period=${period}&product=${encodeURIComponent(product)}`);
 }
 
-export async function exportROPReport(
-  format: "csv" | "json" | "xml",
-  params?: {
-    service_level?: number;
-    ordering_cost?: number;
-    holding_cost?: number;
-    default_lead_time?: number;
-  }
-): Promise<string> {
-  const q = new URLSearchParams({ format });
-  if (params) {
-    if (params.service_level) q.set("service_level", String(params.service_level));
-    if (params.ordering_cost) q.set("ordering_cost", String(params.ordering_cost));
-    if (params.holding_cost) q.set("holding_cost", String(params.holding_cost));
-    if (params.default_lead_time) q.set("default_lead_time", String(params.default_lead_time));
-  }
-  return fetchText(`/api/rop/report/export?${q.toString()}`);
+export async function exportROPReport(format: "csv" | "json" | "xml"): Promise<string> {
+  return fetchText(`/api/rop/report/export?format=${format}`);
 }
 
 export function downloadContent(filename: string, content: string, mime: string) {
@@ -402,8 +388,8 @@ export async function uploadMRPFile(file: File): Promise<{ inserted: number }> {
   return postForm("/api/rop/mrp/upload", file);
 }
 
-export async function uploadAccurateForecastFile(file: File): Promise<{ inserted: number }> {
-  return postForm("/api/rop/forecast/upload", file);
+export async function uploadStockFile(file: File): Promise<{ inserted: number }> {
+  return postForm("/api/rop/stock/upload", file);
 }
 
 export async function resetTestData(): Promise<{ ok: boolean; counts: Record<string, number> }> {
@@ -414,18 +400,6 @@ export async function resetTestData(): Promise<{ ok: boolean; counts: Record<str
   return res.json();
 }
 
-export async function getROPReport(params?: {
-  service_level?: number;
-  ordering_cost?: number;
-  holding_cost?: number;
-  default_lead_time?: number;
-}): Promise<ROPReport> {
-  const q = new URLSearchParams();
-  if (params) {
-    if (params.service_level) q.set("service_level", String(params.service_level));
-    if (params.ordering_cost) q.set("ordering_cost", String(params.ordering_cost));
-    if (params.holding_cost) q.set("holding_cost", String(params.holding_cost));
-    if (params.default_lead_time) q.set("default_lead_time", String(params.default_lead_time));
-  }
-  return fetchJSON(`/api/rop/report?${q.toString()}`);
+export async function getROPReport(): Promise<ROPReport> {
+  return fetchJSON(`/api/rop/report`);
 }
