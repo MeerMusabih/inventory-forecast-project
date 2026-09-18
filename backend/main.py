@@ -1132,6 +1132,7 @@ def rop_report():
     """Compare MRP monthly requirement against stock on hand.
 
     - SAFE (green): stock on hand covers the requirement.
+    - SAFE overstocked (orange): stock exceeds the requirement by >25% - still safe.
     - ORDER (red): short - order_qty tells how much more to order.
     Stock comes from the uploaded stock_on_hand snapshot; a row with no stock
     entry counts as 0 (short).
@@ -1151,10 +1152,12 @@ def rop_report():
         on_hand = stock_map.get(code, 0)
 
         if on_hand >= demand:
-            action = "SAFE - enough stock"
-            notes = "Stock covers requirement"
+            overstocked = on_hand > demand * 1.25
+            action = "SAFE - overstocked" if overstocked else "SAFE - enough stock"
+            notes = "Stock exceeds +25% above requirement" if overstocked else "Stock covers requirement"
             order_qty = 0
         else:
+            overstocked = False
             order_qty = math.ceil(demand - on_hand)
             action = f"ORDER {order_qty} units"
             notes = f"Order {order_qty} more units"
@@ -1167,6 +1170,7 @@ def rop_report():
             "action": action,
             "order_more": order_qty,
             "notes": notes,
+            "overstocked": overstocked,
         })
 
     # Largest shortages first

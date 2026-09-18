@@ -250,6 +250,7 @@ export interface ROPRow {
   action: string;
   order_more: number;
   notes: string;
+  overstocked: boolean;
 }
 
 export interface ROPReport {

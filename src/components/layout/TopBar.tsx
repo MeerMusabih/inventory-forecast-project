@@ -5,7 +5,6 @@ import { resetTestData } from '../../api/client'
 
 const titles: Record<string, { title: string; crumb: string }> = {
   '/': { title: 'Dashboard', crumb: 'Overview' },
-  '/inventory': { title: 'Inventory', crumb: 'Overview' },
   '/forecast': { title: 'Forecast', crumb: 'Planning' },
   '/actual-transfers': { title: 'Actual Transfers', crumb: 'Planning' },
   '/rop': { title: 'Reordering Point', crumb: 'Optimization' },
@@ -17,7 +16,7 @@ interface TopBarProps {
 
 export default function TopBar({ onMenuClick }: TopBarProps) {
   const { pathname } = useLocation()
-  const meta = titles[pathname] ?? { title: 'Inventory Intelligence', crumb: 'Home' }
+  const meta = titles[pathname] ?? { title: 'Intelligent Forecast', crumb: 'Home' }
   const [running, setRunning] = useState(false)
   const [error, setError] = useState('')
 
@@ -56,7 +55,7 @@ export default function TopBar({ onMenuClick }: TopBarProps) {
           <span className="hidden sm:inline-flex w-8 h-8 rounded-xl bg-white border border-line items-center justify-center overflow-hidden">
             <img src="/bakery-logo.png" alt="" width={32} height={32} className="w-full h-full object-cover" />
           </span>
-          <span className="font-bold text-ink whitespace-nowrap">Inventory Intelligence</span>
+          <span className="font-bold text-ink whitespace-nowrap">Intelligent Forecast</span>
           <span className="text-muted/50 hidden md:inline">/</span>
           <span className="text-muted whitespace-nowrap hidden md:inline">{meta.crumb}</span>
           <span className="text-muted/50 hidden md:inline">/</span>

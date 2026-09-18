@@ -17,7 +17,7 @@ const COLUMN_HELP: { key: string; label: string; hint: string }[] = [
   { key: 'raw_material', label: 'Item Name', hint: 'Requirement name from the MRP file' },
   { key: 'mrp_monthly', label: 'MRP Monthly Qty', hint: 'Monthly requirement quantity (from MRP)' },
   { key: 'stock_on_hand', label: 'Hands On Stock', hint: 'Current stock, from the uploaded stock file' },
-  { key: 'action', label: 'Action', hint: 'GREEN when stock covers the requirement, RED when short' },
+  { key: 'action', label: 'Action', hint: 'GREEN when stock covers the requirement, ORANGE when overstocked >25% (still safe), RED when short' },
   { key: 'order_more', label: 'Order More', hint: 'How many more units to order when short' },
 ]
 
@@ -79,7 +79,7 @@ export default function ROP() {
     <div className="space-y-6">
       <PageHeader
         title="Reordering Point"
-        description="Upload the MRP and stock files, then compare MRP requirement against stock on hand: enough (green) or short (red)."
+        description="Upload the MRP and stock files, then compare MRP requirement against stock on hand: enough (green), overstocked >25% (orange, still safe), or short (red)."
         actions={
           report && report.report.length > 0 ? (
             <div className="flex items-center gap-2">
@@ -177,7 +177,7 @@ export default function ROP() {
           <div className="card-head">
             <div>
               <h3 className="card-title">ROP report</h3>
-              <p className="text-xs text-muted mt-0.5">Green = enough stock, red = short. Hover a column header for details.</p>
+              <p className="text-xs text-muted mt-0.5">Green = enough stock, orange = overstocked &gt;25% (still safe), red = short. Hover a column header for details.</p>
             </div>
           </div>
           {exportError && <p className="px-5 pt-3 text-xs text-danger">{exportError}</p>}
@@ -194,13 +194,32 @@ export default function ROP() {
               </thead>
               <tbody>
                 {report.report.map((r, i) => (
-                  <tr key={i} className={clsx(r.action.startsWith('SAFE') ? 'bg-success-bg/30' : 'bg-danger-bg/20')}>
+                  <tr
+                    key={i}
+                    className={clsx(
+                      r.action.startsWith('SAFE')
+                        ? r.overstocked
+                          ? 'bg-warn-bg/60'
+                          : 'bg-success-bg/30'
+                        : 'bg-danger-bg/20'
+                    )}
+                  >
                     <td className="font-medium text-ink whitespace-nowrap">{r.code}</td>
                     <td className="whitespace-nowrap">{r.raw_material}</td>
                     <td className="text-right text-ink">{r.mrp_monthly.toLocaleString()}</td>
                     <td className="text-right font-medium text-ink">{r.stock_on_hand.toLocaleString()}</td>
                     <td>
-                      <span className={r.action.startsWith('SAFE') ? 'badge-success' : 'badge-danger'}>{r.action}</span>
+                      <span
+                        className={
+                          r.overstocked
+                            ? 'badge-warn'
+                            : r.action.startsWith('SAFE')
+                              ? 'badge-success'
+                              : 'badge-danger'
+                        }
+                      >
+                        {r.action}
+                      </span>
                     </td>
                     <td className="text-right font-bold text-primary-700">
                       {r.order_more > 0 ? r.order_more.toLocaleString() : '—'}

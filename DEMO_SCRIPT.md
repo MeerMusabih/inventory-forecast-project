@@ -1,4 +1,4 @@
-# Inventory Intelligence — Complete Demo Script & System Documentation
+# Intelligent Forecast — Complete Demo Script & System Documentation
 
 > Bakery **Demand Planning & Inventory Management** system.
 > *"See the exact month where the supply chain failed, and the exact raw materials you must reorder — before the cake grabs run short."*
@@ -21,7 +21,7 @@
 
 | | |
 |---|---|
-| **Product** | Inventory Intelligence — a bakery inventory / demand-planning SaaS dashboard |
+| **Product** | Intelligent Forecast — a bakery inventory / demand-planning SaaS dashboard |
 | **Domain** | Chain bakery, 5 branches, monthly planning periods |
 | **Frontend** | React 19 + TypeScript + Vite + Tailwind CSS v4 (Plus Jakarta Sans, warm bakery design) |
 | **Backend** | Python (FastAPI), REST API at `/api/...` |
@@ -88,7 +88,7 @@ Three layers make the data realistic — **this is the story of the demo**:
 - Fades out only when everything is loaded, then the app appears with a subtle fade.
 
 ### 3.2 Sidebar (espresso brown, cream content — bakery SaaS look)
-- Logo (white card), "Inventory Intelligence — Demand planning suite".
+- Logo (white card), "Intelligent Forecast — And Risk Avoidance".
 - Groups: **Overview** (Dashboard, Inventory) · **Planning** (Forecast, Actual Transfers) · **Optimization** (Reordering Point).
 - Active page highlighted with a warm pill + accent bar. Green "System status" pulse in the footer ("Prototype v2.0 · 6 periods · branch level").
 - Top bar: breadcrumb with logo, today's date, green **Live** badge, and the **Test System** button (resets the demo database to the seed dataset and reloads — use this to start/restart the demo).

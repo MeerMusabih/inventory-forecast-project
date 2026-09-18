@@ -3,7 +3,6 @@ import type { ComponentType, SVGProps } from 'react'
 import clsx from 'clsx'
 import {
   IconDashboard,
-  IconInventory,
   IconForecast,
   IconTransfers,
   IconROP,
@@ -19,10 +18,7 @@ type NavItem = {
 const groups: { title: string; items: NavItem[] }[] = [
   {
     title: 'Overview',
-    items: [
-      { to: '/', label: 'Dashboard', icon: IconDashboard },
-      { to: '/inventory', label: 'Inventory', icon: IconInventory },
-    ],
+    items: [{ to: '/', label: 'Dashboard', icon: IconDashboard }],
   },
   {
     title: 'Planning',
@@ -68,7 +64,7 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
             <div className="w-11 h-11 rounded-2xl bg-white flex items-center justify-center overflow-hidden shadow-lg shadow-black/25 border border-line shrink-0">
               <img
                 src="/bakery-logo.png"
-                alt="Inventory Intelligence logo"
+                alt="Intelligent Forecast logo"
                 width={44}
                 height={44}
                 className="w-full h-full object-cover"
@@ -76,9 +72,9 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
             </div>
             <div className="leading-tight min-w-0">
               <h1 className="text-[15px] font-extrabold text-white tracking-[-0.01em] flex items-center gap-2">
-                Inventory Intelligence
+                Intelligent Forecast
               </h1>
-              <p className="text-[11px] text-shell-text/60 mt-0.5 font-medium">Demand planning suite</p>
+              <p className="text-[11px] text-shell-text/60 mt-0.5 font-medium">And Risk Avoidance</p>
             </div>
           </div>
           <button

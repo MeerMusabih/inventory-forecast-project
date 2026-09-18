@@ -4,7 +4,6 @@ import Sidebar from './components/layout/Sidebar'
 import TopBar from './components/layout/TopBar'
 import LoadingScreen from './components/LoadingScreen'
 import Dashboard from './pages/Dashboard'
-import Inventory from './pages/Inventory'
 import Forecast from './pages/Forecast'
 import ActualTransfers from './pages/ActualTransfers'
 import ROP from './pages/ROP'
@@ -26,7 +25,6 @@ function AppShell() {
           <div className="mx-auto max-w-[1400px]">
             <Routes>
               <Route path="/" element={<Dashboard />} />
-              <Route path="/inventory" element={<Inventory />} />
               <Route path="/forecast" element={<Forecast />} />
               <Route path="/actual-transfers" element={<ActualTransfers />} />
               <Route path="/rop" element={<ROP />} />
