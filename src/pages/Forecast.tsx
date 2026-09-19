@@ -78,7 +78,7 @@ export default function Forecast() {
 
   const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
   const visible = filtered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE)
-  const totalQty = entries.reduce((s, e) => s + e.quantity, 0)
+  const totalQty = filtered.reduce((s, e) => s + e.quantity, 0)
 
   async function handleDelete() {
     if (!window.confirm(`Delete all ${entries.length} entries from Period ${selectedPeriod}?`)) return
@@ -192,11 +192,11 @@ export default function Forecast() {
               <div className="card-body space-y-4">
                 <div className="grid grid-cols-2 gap-3">
                   <div className="rounded-xl bg-canvas border border-line-soft p-3.5">
-                    <p className="stat-label">Entries</p>
-                    <p className="text-xl font-semibold text-ink mt-1.5">{entries.length.toLocaleString()}</p>
+                    <p className="stat-label">Rows (filtered)</p>
+                    <p className="text-xl font-semibold text-ink mt-1.5">{filtered.length.toLocaleString()}</p>
                   </div>
                   <div className="rounded-xl bg-canvas border border-line-soft p-3.5">
-                    <p className="stat-label">Forecast qty</p>
+                    <p className="stat-label">Forecast qty (filtered)</p>
                     <p className="text-xl font-semibold text-primary-700 mt-1.5">{totalQty.toLocaleString()}</p>
                   </div>
                 </div>
