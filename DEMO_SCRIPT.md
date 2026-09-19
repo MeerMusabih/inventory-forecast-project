@@ -117,7 +117,8 @@ Item No · Item Name · Branch · Forecast · Actual Sales · Actual Received ·
 
 ### 3.4 Forecast — "upload + view one month's plan"
 - Left: the 6 **period cards** (name, entry count, date range).
-- **Upload** a forecast file (CSV / Excel / JSON) per period — the parser accepts many layouts and previews a summary (entries, total forecast quantity).
+- **Upload** a forecast file (CSV / Excel / JSON) per period — the parser accepts many layouts and previews a summary (entries, total forecast quantity). **A new upload replaces that period's previous forecast** (delete-then-insert, never appends).
+- **Demo tip:** upload a fresh file for P1 and show the rows/forecast-qty cards swap to the new figures.
 - Filterable tables by **Branch** and **Product** dropdowns, plus searchable, paginated entries (Item No, Item Name, Branch, Qty, Date).
 - **Export** per period as CSV / JSON / XML.
 - "Clear period" to wipe a period.

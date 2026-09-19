@@ -434,6 +434,8 @@ async def upload_forecast(period: int = 1, file: UploadFile = File(...)):
         raise HTTPException(400, "Missing required columns: item_no / item_name / branch / quantity / date")
 
     conn = get_conn()
+    conn.execute("DELETE FROM forecast_entries WHERE period = ?", (period,))  # new upload replaces the period's previous forecast
+
     rows_to_insert = []
     for r in rows:
         item_no = str(r.get(item_no_col, "")).strip()
@@ -454,8 +456,9 @@ async def upload_forecast(period: int = 1, file: UploadFile = File(...)):
         rows_to_insert,
     )
     conn.commit()
+    period_rows = conn.execute("SELECT COUNT(*) AS c FROM forecast_entries WHERE period = ?", (period,)).fetchone()["c"]
     conn.close()
-    return {"inserted": len(rows_to_insert), "skipped": len(rows) - len(rows_to_insert), "period": period}
+    return {"inserted": len(rows_to_insert), "skipped": len(rows) - len(rows_to_insert), "period": period, "replaced": True, "period_rows": period_rows}
 
 
 @app.delete("/api/forecast/clear")
