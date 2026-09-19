@@ -160,6 +160,70 @@ STOCK_COVERAGE = {
     "RM-012": 1.70,  # Lemon Extract - plenty
 }
 
+# ---------- Extended materials (flat MRP/ROP catalog, no branch/cake coupling) ----------
+# Deterministic expansion to a 60-material master list. Coverage for the added
+# materials follows a repeating 12-step pattern so the ROP mix stays balanced
+# (SAFE / overstocked >25% / ORDER) instead of being hand-tuned per row.
+EXTRA_RAW_MATERIALS = [
+    # (name, unit, base monthly qty)
+    ("Rye Flour", "kg", 180),
+    ("Whole Wheat Flour", "kg", 210),
+    ("Cornflour", "kg", 95),
+    ("Oat Flour", "kg", 120),
+    ("Almond Flour", "kg", 160),
+    ("Rice Flour", "kg", 85),
+    ("Semolina", "kg", 70),
+    ("Brown Sugar", "kg", 240),
+    ("Caster Sugar", "kg", 320),
+    ("Honey", "kg", 65),
+    ("Golden Syrup", "kg", 90),
+    ("Maple Syrup", "l", 40),
+    ("Glucose Syrup", "kg", 75),
+    ("Molasses", "kg", 25),
+    ("Demerara Sugar", "kg", 110),
+    ("Vegetable Oil", "l", 120),
+    ("Sunflower Oil", "l", 45),
+    ("Olive Oil", "l", 30),
+    ("Shortening", "kg", 60),
+    ("Ghee", "kg", 35),
+    ("Cream Cheese", "kg", 140),
+    ("Sour Cream", "l", 80),
+    ("Condensed Milk", "l", 55),
+    ("Buttermilk", "l", 70),
+    ("Fresh Cream", "l", 200),
+    ("Yogurt", "kg", 90),
+    ("Yeast", "kg", 4),
+    ("Cream of Tartar", "kg", 6),
+    ("Cinnamon", "kg", 5),
+    ("Nutmeg", "kg", 2),
+    ("Cardamom", "kg", 3),
+    ("Ginger Powder", "kg", 4),
+    ("Coffee Extract", "l", 8),
+    ("Vanilla Bean Paste", "l", 6),
+    ("Almond Essence", "l", 3),
+    ("Cocoa Butter", "kg", 12),
+    ("Dark Chocolate", "kg", 85),
+    ("White Chocolate", "kg", 75),
+    ("Chocolate Chips", "kg", 95),
+    ("Caramel", "kg", 60),
+    ("Hazelnut Spread", "kg", 70),
+    ("Raspberry Jam", "kg", 50),
+    ("Blueberry Jam", "kg", 45),
+    ("Mango Puree", "kg", 40),
+    ("Coconut Flakes", "kg", 35),
+    ("Chopped Nuts", "kg", 55),
+    ("Peanut Butter", "kg", 40),
+    ("Lemon Curd", "kg", 25),
+]
+
+_COVERAGE_CYCLE = [1.50, 1.10, 0.90, 0.65, 1.05, 0.45, 1.25, 1.00, 0.75, 1.60, 1.20, 0.80]
+
+for _i, (_name, _unit, _qty) in enumerate(EXTRA_RAW_MATERIALS):
+    _code = f"RM-{len(RAW_MATERIALS) + 1:03d}"
+    RAW_MATERIALS.append((_code, _name, _unit, _qty))
+    STOCK_COVERAGE[_code] = _COVERAGE_CYCLE[_i % len(_COVERAGE_CYCLE)]
+RAW_MATERIALS_BY_CODE = {c: (n, u, q) for c, n, u, q in RAW_MATERIALS}
+
 
 def forecast_qty(base, season, branch):
     return round(base * season * BRANCH_SHARE[branch])

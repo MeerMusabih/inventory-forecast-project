@@ -176,3 +176,51 @@ Generated from `scripts/build_sample_data.py`.
 | RM-010 | Strawberry Jam | kg | 110 | 33 | ORDER 77 |
 | RM-011 | Icing Sugar | kg | 130 | 136 | SAFE |
 | RM-012 | Lemon Extract | ml | 300 | 510 | SAFE |
+| RM-013 | Rye Flour | kg | 180 | 270 | SAFE |
+| RM-014 | Whole Wheat Flour | kg | 210 | 231 | SAFE |
+| RM-015 | Cornflour | kg | 95 | 86 | ORDER 9 |
+| RM-016 | Oat Flour | kg | 120 | 78 | ORDER 42 |
+| RM-017 | Almond Flour | kg | 160 | 168 | SAFE |
+| RM-018 | Rice Flour | kg | 85 | 38 | ORDER 47 |
+| RM-019 | Semolina | kg | 70 | 88 | SAFE |
+| RM-020 | Brown Sugar | kg | 240 | 240 | SAFE |
+| RM-021 | Caster Sugar | kg | 320 | 240 | ORDER 80 |
+| RM-022 | Honey | kg | 65 | 104 | SAFE |
+| RM-023 | Golden Syrup | kg | 90 | 108 | SAFE |
+| RM-024 | Maple Syrup | l | 40 | 32 | ORDER 8 |
+| RM-025 | Glucose Syrup | kg | 75 | 112 | SAFE |
+| RM-026 | Molasses | kg | 25 | 28 | SAFE |
+| RM-027 | Demerara Sugar | kg | 110 | 99 | ORDER 11 |
+| RM-028 | Vegetable Oil | l | 120 | 78 | ORDER 42 |
+| RM-029 | Sunflower Oil | l | 45 | 47 | SAFE |
+| RM-030 | Olive Oil | l | 30 | 14 | ORDER 16 |
+| RM-031 | Shortening | kg | 60 | 75 | SAFE |
+| RM-032 | Ghee | kg | 35 | 35 | SAFE |
+| RM-033 | Cream Cheese | kg | 140 | 105 | ORDER 35 |
+| RM-034 | Sour Cream | l | 80 | 128 | SAFE |
+| RM-035 | Condensed Milk | l | 55 | 66 | SAFE |
+| RM-036 | Buttermilk | l | 70 | 56 | ORDER 14 |
+| RM-037 | Fresh Cream | l | 200 | 300 | SAFE |
+| RM-038 | Yogurt | kg | 90 | 99 | SAFE |
+| RM-039 | Yeast | kg | 4 | 4 | SAFE |
+| RM-040 | Cream of Tartar | kg | 6 | 4 | ORDER 2 |
+| RM-041 | Cinnamon | kg | 5 | 5 | SAFE |
+| RM-042 | Nutmeg | kg | 2 | 1 | ORDER 1 |
+| RM-043 | Cardamom | kg | 3 | 4 | SAFE |
+| RM-044 | Ginger Powder | kg | 4 | 4 | SAFE |
+| RM-045 | Coffee Extract | l | 8 | 6 | ORDER 2 |
+| RM-046 | Vanilla Bean Paste | l | 6 | 10 | SAFE |
+| RM-047 | Almond Essence | l | 3 | 4 | SAFE |
+| RM-048 | Cocoa Butter | kg | 12 | 10 | ORDER 2 |
+| RM-049 | Dark Chocolate | kg | 85 | 128 | SAFE |
+| RM-050 | White Chocolate | kg | 75 | 82 | SAFE |
+| RM-051 | Chocolate Chips | kg | 95 | 86 | ORDER 9 |
+| RM-052 | Caramel | kg | 60 | 39 | ORDER 21 |
+| RM-053 | Hazelnut Spread | kg | 70 | 74 | SAFE |
+| RM-054 | Raspberry Jam | kg | 50 | 22 | ORDER 28 |
+| RM-055 | Blueberry Jam | kg | 45 | 56 | SAFE |
+| RM-056 | Mango Puree | kg | 40 | 40 | SAFE |
+| RM-057 | Coconut Flakes | kg | 35 | 26 | ORDER 9 |
+| RM-058 | Chopped Nuts | kg | 55 | 88 | SAFE |
+| RM-059 | Peanut Butter | kg | 40 | 48 | SAFE |
+| RM-060 | Lemon Curd | kg | 25 | 20 | ORDER 5 |

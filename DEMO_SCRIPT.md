@@ -11,7 +11,7 @@
 > It tells you three things you need every month:
 > 1. **Was my forecast right?** — the Dashboard compares what we *planned* to receive for each cake at each branch vs what we *actually* received, and flags the SKUs that were wrong.
 > 2. **Did the supply chain fail somewhere?** — the dataset includes documented outages; the dashboard catches them immediately.
-> 3. **What do I need to reorder?** — the Reordering Point module compares the MRP (materials requirement) for 12 raw materials against stock on hand, and tells you exactly how many units to order, in a green/orange/red report.
+> 3. **What do I need to reorder?** — the Reordering Point module compares the MRP (materials requirement) for 60 raw materials against stock on hand, and tells you exactly how many units to order, in a green/orange/red report.
 >
 > Everything is live data, every number on screen is computed from an actual database behind this app, and every report can be exported as CSV, JSON or XML."*
 
@@ -39,7 +39,7 @@ The whole demo is built around one **internally consistent seed dataset**. Every
 - **30 cakes** (`CAKE-001` … `CAKE-030`): Chocolate Fudge, Vanilla Sponge, Red Velvet, Lemon Drizzle, Carrot, Black Forest, Strawberry Shortcake, Whole-Wheat, Pineapple Upside-Down, Butter + 20 more (Cheesecake, Mango Mousse, Pistachio, Coffee, Truffle Brownie…).
 - **20 branches** (`BR-A` … `BR-T`) with market shares: A=12%, B=10%, C=9%, D=8%, E=7%, F–J=5–6%, down to BR-T=1%.
 - **6 planning periods** (P1–P6) = March → August **2026**.
-- **12 raw materials** (`RM-001` … `RM-012`) for the MRP/ROP module.
+- **60 raw materials** (`RM-001` … `RM-060`) for the MRP/ROP module.
 - **Core daily-sales file**: 247,800 rows = 30 cakes × 20 branches × 413 days of daily sales / returns (also what the ML models train on).
 
 ### 2.2 The reality model (how "actual" is generated)
@@ -134,9 +134,9 @@ Item No · Item Name · Branch · Forecast · Actual Sales · Actual Received ·
 ### 3.6 Reordering Point — "exact reorder quantities" (the second money screen)
 - Two upload cards: **MRP file** and **stock file**.
 - "Generate ROP report" → computes requirement vs stock, missing stock treated as 0.
-- Summary cards: **Total 12 · Safe 7 · Reorder 5**.
+- Summary cards: **Total 60 · Safe 36 · Reorder 24**.
 - Table: Item Code, Item Name, MRP Monthly Qty, Stock On Hand, Action (green SAFE / **orange SAFE – overstocked >25%** / red ORDER), **Order More** (exact units to order).
-- Show the ORDER lines: **Eggs 3,360 · Butter 156 · Vanilla Essence 90 · Strawberry Jam 77 · Milk 63**; then the orange overstock rows (RM-001 Flour, RM-009 Cream, RM-012 Lemon Extract).
+- Show the ORDER lines: **Eggs 3,360 · Butter 156 · Vanilla Essence 90 · Caster Sugar 80 · Strawberry Jam 77 · Milk 63**; then the orange overstock rows (RM-001 Flour, RM-009 Cream, RM-012 Lemon Extract, plus the pattern-generated overstocks).
 - Export CSV / JSON / XML.
 
 ---
@@ -153,7 +153,7 @@ Item No · Item Name · Branch · Forecast · Actual Sales · Actual Received ·
 6. **2:10 – Export.** Click **CSV** — show the downloaded file. *"Every report exports."*
 7. **2:40 – Forecast.** Click P5/P6, show seasonality growth. *"This is the demand plan we upload each month; the rest of the app checks whether it happened."*
 8. **3:10 – Actual Transfers.** Period=2, BR-D → ~49 delivery rows across many April dates; the outage cakes have zero. Switch to Duration filter (July 1–31) to show the date-range mode. *"This is the receipt log — bulk-uploadable, receipt-by-receipt."*
-9. **3:50 – Reordering Point.** *"Now the question every bakery asks: what do I reorder?"* Show 7 Safe / 5 Reorder, plus the orange overstock rows. Click the table row for Eggs: *"Stock 840 of 4,200 needed — order 3,360."*
+9. **3:50 – Reordering Point.** *"Now the question every bakery asks: what do I reorder?"* Show 36 Safe / 24 Reorder among 60 materials, plus the orange overstock rows. Click the table row for Eggs: *"Stock 840 of 4,200 needed — order 3,360."*
 10. **5:00 – Export + reset.** Export the ROP report. *"If anything ever gets messed up, one click on Test System rebuilds the whole demo database."*
 11. **5:20 – Closing.** *"It's a live-data system — dashboard, uploads, reordering, exports — and it works end-to-end..."* (Q&A)
 
@@ -190,7 +190,7 @@ Missing stock = 0 (so an item with no stock file row is treated as short → red
 - **ML (bonus endpoints):** `GET /api/forecast/{cake}/{outlet}` (trains Baseline + Holt-Winters + ARIMA + XGBoost and returns MAE/RMSE/MAPE), `GET /api/model-comparison/{cake}/{outlet}`, `GET /api/inventory-optimization/{cake}/{outlet}`, `GET /api/sales/{cake}/{outlet}?days=N`
 
 ### 5.4 Database (SQLite)
-Tables: `forecast_entries` (3,600 rows) · `actual_transfers` (7,170 receipt rows) · `mrp_data` (12) · `accurate_forecast` (600) · `stock_on_hand` (12) · plus the training `sales.csv` (247,800 rows). One click on **Test System** rebuilds the seeds.
+Tables: `forecast_entries` (3,600 rows) · `actual_transfers` (7,170 receipt rows) · `mrp_data` (60) · `accurate_forecast` (600) · `stock_on_hand` (60) · plus the training `sales.csv` (247,800 rows). One click on **Test System** rebuilds the seeds.
 
 ### 5.5 Data story construct
 Seed script (`scripts/build_sample_data.py`) models reality as three layers: **cake bias → branch reliability → documented outages**. Forecast = base × season × branch share. Actual = forecast × bias × reliability. This is *deliberate, documented metadata* — it's what lets the demo demonstrate a real interpretable scenario (under-forecast brands, an over-stocked branch, and one catastrophic outage) instead of random noise.
@@ -224,7 +224,7 @@ Seed script (`scripts/build_sample_data.py`) models reality as three layers: **c
 ## 8. LIKELY Q&A (short answers)
 
 - **Is this real data?** It's a curated, deterministic seed dataset — every number is computed by the backend from that seed, not hardcoded in the UI. Re-seedable with one click.
-- **How many branches/cakes/materials?** 20 branches · 30 cakes · 12 raw materials · 6 monthly periods.
+- **How many branches/cakes/materials?** 20 branches · 30 cakes · 60 raw materials · 6 monthly periods.
 - **Which ML models?** Baseline, Holt–Winters, ARIMA, XGBoost — trained on 330 days, evaluated with MAE/RMSE/MAPE via the bonus `/api/forecast/{cake}/{outlet}` endpoint.
 - **Can I export?** Every report — Dashboard, Actual Transfers, ROP — exports to CSV, JSON, or XML.
 - **What tech?** React + TypeScript + Tailwind UI; FastAPI backend; SQLite; deployable to Render.
