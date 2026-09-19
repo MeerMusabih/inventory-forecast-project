@@ -1,10 +1,12 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import clsx from 'clsx'
 import PageHeader from '../components/PageHeader'
 import FileUpload from '../components/FileUpload'
-import { IconSearch, IconCalendar, IconClose } from '../components/icons'
+import { IconSearch, IconCalendar, IconClose, IconDownload } from '../components/icons'
 import {
   clearForecast,
+  downloadContent,
+  exportForecast,
   getForecastEntries,
   getForecastPeriods,
   uploadForecastFile,
@@ -21,6 +23,9 @@ export default function Forecast() {
   const [loading, setLoading] = useState(false)
   const [page, setPage] = useState(0)
   const [search, setSearch] = useState('')
+  const [branch, setBranch] = useState('all')
+  const [product, setProduct] = useState('all')
+  const [activeExport, setActiveExport] = useState<null | 'csv' | 'json' | 'xml'>(null)
 
   const refreshPeriods = useCallback(async () => {
     const p = await getForecastPeriods()
@@ -46,14 +51,30 @@ export default function Forecast() {
     refreshEntries(selectedPeriod)
   }, [selectedPeriod, refreshEntries])
 
-  const filtered = search
-    ? entries.filter(
+  const branchOptions = useMemo(
+    () => Array.from(new Set(entries.map(e => e.branch).filter(Boolean))).sort(),
+    [entries]
+  )
+
+  const productOptions = useMemo(() => {
+    const seen = new Map<string, string>()
+    for (const e of entries) if (e.item_no) seen.set(e.item_no, e.item_name)
+    return Array.from(seen.entries()).sort((a, b) => a[0].localeCompare(b[0]))
+  }, [entries])
+
+  const filtered = useMemo(
+    () =>
+      entries.filter(
         e =>
-          e.item_no.toLowerCase().includes(search.toLowerCase()) ||
-          e.item_name.toLowerCase().includes(search.toLowerCase()) ||
-          e.branch.toLowerCase().includes(search.toLowerCase())
-      )
-    : entries
+          (branch === 'all' || e.branch === branch) &&
+          (product === 'all' || e.item_no === product) &&
+          (!search ||
+            e.item_no.toLowerCase().includes(search.toLowerCase()) ||
+            e.item_name.toLowerCase().includes(search.toLowerCase()) ||
+            e.branch.toLowerCase().includes(search.toLowerCase()))
+      ),
+    [entries, branch, product, search]
+  )
 
   const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
   const visible = filtered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE)
@@ -66,11 +87,42 @@ export default function Forecast() {
     refreshPeriods()
   }
 
+  async function handleExport(format: 'csv' | 'json' | 'xml') {
+    setActiveExport(format)
+    try {
+      const content = await exportForecast(format, selectedPeriod)
+      const mime = format === 'json' ? 'application/json' : format === 'xml' ? 'application/xml' : 'text/csv'
+      downloadContent(`forecast-p${selectedPeriod}.${format}`, content, mime)
+    } catch (e) {
+      window.alert(e instanceof Error ? e.message : 'Export failed')
+    } finally {
+      setActiveExport(null)
+    }
+  }
+
   return (
     <div className="space-y-6">
       <PageHeader
         title="Forecast"
         description="Upload forecast demand per period — up to 20,000 entries with item, branch, quantity and date."
+        actions={
+          entries.length > 0 ? (
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-muted mr-1">Export</span>
+              {(['csv', 'json', 'xml'] as const).map(f => (
+                <button
+                  key={f}
+                  onClick={() => handleExport(f)}
+                  disabled={activeExport !== null}
+                  className="btn btn-secondary btn-xs uppercase tracking-wide"
+                >
+                  <IconDownload width={14} height={14} />
+                  {activeExport === f ? '…' : f}
+                </button>
+              ))}
+            </div>
+          ) : undefined
+        }
       />
 
       <div className="grid grid-cols-1 lg:grid-cols-[240px_minmax(0,1fr)] gap-6 items-start">
@@ -180,6 +232,57 @@ export default function Forecast() {
                   className="input pl-9 w-64"
                 />
               </div>
+            </div>
+            <div className="flex flex-wrap items-center gap-3 px-5 pt-4 pb-1">
+              <label className="flex items-center gap-2 text-xs font-semibold text-muted">
+                Branch
+                <select
+                  value={branch}
+                  onChange={e => {
+                    setBranch(e.target.value)
+                    setPage(0)
+                  }}
+                  className="select"
+                >
+                  <option value="all">All branches</option>
+                  {branchOptions.map(b => (
+                    <option key={b} value={b}>
+                      {b}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="flex items-center gap-2 text-xs font-semibold text-muted">
+                Product
+                <select
+                  value={product}
+                  onChange={e => {
+                    setProduct(e.target.value)
+                    setPage(0)
+                  }}
+                  className="select"
+                >
+                  <option value="all">All products</option>
+                  {productOptions.map(([code, name]) => (
+                    <option key={code} value={code}>
+                      {code} — {name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              {(branch !== 'all' || product !== 'all' || search) && (
+                <button
+                  onClick={() => {
+                    setBranch('all')
+                    setProduct('all')
+                    setSearch('')
+                    setPage(0)
+                  }}
+                  className="btn btn-secondary btn-xs"
+                >
+                  Clear filters
+                </button>
+              )}
             </div>
             <div className="overflow-x-auto max-h-[600px] overflow-y-auto">
               <table className="data-table">

@@ -84,6 +84,13 @@ def get_sales(product_id: str, outlet_id: str, days: int = 365):
     }
 
 
+@app.get("/api/forecast/entries/export")
+def export_forecast_entries(period: int = 1, format: str = "csv"):
+    rows = get_forecast_entries(period=period, limit=100000)
+    fieldnames = ["period", "item_no", "item_name", "branch", "quantity", "date"]
+    return _serialize_report(rows, fieldnames, format, f"forecast-p{period}")
+
+
 @app.get("/api/forecast/{product_id}/{outlet_id}")
 def get_forecast(product_id: str, outlet_id: str, model_type: str = "all", steps: int = 30):
     df = get_data()

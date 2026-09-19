@@ -371,6 +371,13 @@ export async function exportDashboard(
   return fetchText(`/api/export?format=${format}&branch=${encodeURIComponent(branch)}&period=${period}&product=${encodeURIComponent(product)}`);
 }
 
+export async function exportForecast(
+  format: "csv" | "json" | "xml",
+  period: number
+): Promise<string> {
+  return fetchText(`/api/forecast/entries/export?format=${format}&period=${period}`);
+}
+
 export async function exportROPReport(format: "csv" | "json" | "xml"): Promise<string> {
   return fetchText(`/api/rop/report/export?format=${format}`);
 }
