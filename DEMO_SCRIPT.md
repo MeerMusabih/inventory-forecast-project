@@ -7,11 +7,11 @@
 
 ## 0. THE 30-SECOND PITCH (open with this)
 
-> *"This is a **bakery demand-planning and inventory system** for a chain bakery with 5 branches.
+> *"This is a **bakery demand-planning and inventory system** for a chain bakery with 20 branches.
 > It tells you three things you need every month:
 > 1. **Was my forecast right?** — the Dashboard compares what we *planned* to receive for each cake at each branch vs what we *actually* received, and flags the SKUs that were wrong.
-> 2. **Did the supply chain fail somewhere?** — the dataset includes a documented outage; the dashboard catches it immediately.
-> 3. **What do I need to reorder?** — the Reordering Point module compares the MRP (materials requirement) for 12 raw materials against stock on hand, and tells you exactly how many units to order, in a green/red report.
+> 2. **Did the supply chain fail somewhere?** — the dataset includes documented outages; the dashboard catches them immediately.
+> 3. **What do I need to reorder?** — the Reordering Point module compares the MRP (materials requirement) for 12 raw materials against stock on hand, and tells you exactly how many units to order, in a green/orange/red report.
 >
 > Everything is live data, every number on screen is computed from an actual database behind this app, and every report can be exported as CSV, JSON or XML."*
 
@@ -22,7 +22,7 @@
 | | |
 |---|---|
 | **Product** | Intelligent Forecast — a bakery inventory / demand-planning SaaS dashboard |
-| **Domain** | Chain bakery, 5 branches, monthly planning periods |
+| **Domain** | Chain bakery, 20 branches, monthly planning periods |
 | **Frontend** | React 19 + TypeScript + Vite + Tailwind CSS v4 (Plus Jakarta Sans, warm bakery design) |
 | **Backend** | Python (FastAPI), REST API at `/api/...` |
 | **Database** | SQLite (`backend/data/app.db`), re-seedable, 6 tables |
@@ -36,11 +36,11 @@
 The whole demo is built around one **internally consistent seed dataset**. Every number on screen comes from this data — nothing is hardcoded in the UI.
 
 ### 2.1 Scope
-- **10 cakes** (`CAKE-001` … `CAKE-010`): Chocolate Fudge, Vanilla Sponge, Red Velvet, Lemon Drizzle, Carrot, Black Forest, Strawberry Shortcake, Whole-Wheat, Pineapple Upside-Down, Butter.
-- **5 branches** (`BR-A` … `BR-E`) with market shares: A=30%, B=25%, C=20%, D=15%, E=10%.
+- **30 cakes** (`CAKE-001` … `CAKE-030`): Chocolate Fudge, Vanilla Sponge, Red Velvet, Lemon Drizzle, Carrot, Black Forest, Strawberry Shortcake, Whole-Wheat, Pineapple Upside-Down, Butter + 20 more (Cheesecake, Mango Mousse, Pistachio, Coffee, Truffle Brownie…).
+- **20 branches** (`BR-A` … `BR-T`) with market shares: A=12%, B=10%, C=9%, D=8%, E=7%, F–J=5–6%, down to BR-T=1%.
 - **6 planning periods** (P1–P6) = March → August **2026**.
 - **12 raw materials** (`RM-001` … `RM-012`) for the MRP/ROP module.
-- **Core daily-sales file**: 20,650 rows = 10 cakes × 5 branches × 413 days of daily sales / returns (also what the ML models train on).
+- **Core daily-sales file**: 247,800 rows = 30 cakes × 20 branches × 413 days of daily sales / returns (also what the ML models train on).
 
 ### 2.2 The reality model (how "actual" is generated)
 For every cake, every branch, every period:
@@ -53,13 +53,17 @@ actual    = round( forecast × cake_bias × branch_reliability )
 Three layers make the data realistic — **this is the story of the demo**:
 
 1. **Layer 1 — Cake-level forecast bias** (persistent, systematic):
-   - **Under-forecast** (cake sells MORE than we predicted): `CAKE-001`, `CAKE-006`, `CAKE-007` → bias **1.32** (actual ≈ 132% of forecast).
-   - **Over-forecast** (cake sells LESS than predicted): `CAKE-003`, `CAKE-004`, `CAKE-008` → bias **0.68** (actual ≈ 68% of forecast).
+   - **Under-forecast** (cake sells MORE than we predicted): `CAKE-001`, `CAKE-006`, `CAKE-007`, `CAKE-013`, `CAKE-018`, `CAKE-030` → bias **1.32** (actual ≈ 132% of forecast).
+   - **Over-forecast** (cake sells LESS than predicted): `CAKE-003`, `CAKE-004`, `CAKE-008`, `CAKE-015`, `CAKE-023`, `CAKE-026` → bias **0.68** (actual ≈ 68% of forecast).
 2. **Layer 2 — Branch supply reliability** (varies smoothly by month):
    - `BR-A` short in spring, recovers toward summer, August dip.
    - `BR-D` dips hard in April (**0.30**) then recovers.
    - `BR-E` July surge (**1.30**), August collapse (**0.55**).
-3. **Layer 3 — Documented outage**: in **Period 2 (April) at BR-D**, cakes `CAKE-001`, `CAKE-003`, `CAKE-006` received **zero** units — a supply failure.
+   - `BR-P` near-perfect all year (**0.98–1.02**) — the star performer to contrast against.
+   - `BR-T` (smallest) collapses in August (**0.70**).
+3. **Layer 3 — Documented outages** (true zero receipts):
+   - **Period 2 (April) at BR-D**: `CAKE-001`, `CAKE-003`, `CAKE-006`, `CAKE-013`, `CAKE-024` receive **zero** units — a supply failure.
+   - **Period 6 (August) at BR-T**: `CAKE-002`, `CAKE-009`, `CAKE-017`, `CAKE-021` receive **zero** units — an August collapse.
 
 ### 2.3 The ROP dataset (matches stock coverage on purpose)
 | Material | Aug MRP need | Stock on hand | Coverage | ROP result |
@@ -89,7 +93,7 @@ Three layers make the data realistic — **this is the story of the demo**:
 
 ### 3.2 Sidebar (espresso brown, cream content — bakery SaaS look)
 - Logo (white card), "Intelligent Forecast — And Risk Avoidance".
-- Groups: **Overview** (Dashboard, Inventory) · **Planning** (Forecast, Actual Transfers) · **Optimization** (Reordering Point).
+- Groups: **Overview** (Dashboard) · **Planning** (Forecast, Actual Transfers) · **Optimization** (Reordering Point).
 - Active page highlighted with a warm pill + accent bar. Green "System status" pulse in the footer ("Prototype v2.0 · 6 periods · branch level").
 - Top bar: breadcrumb with logo, today's date, green **Live** badge, and the **Test System** button (resets the demo database to the seed dataset and reloads — use this to start/restart the demo).
 
@@ -97,46 +101,42 @@ Three layers make the data realistic — **this is the story of the demo**:
 **Show:** Branch = *All Branches*, Period = **1 (March 2026)**, Product = All Products.
 
 **KPI cards (live values):**
-- Total Forecast: **2,560** · Actual Received: **2,349** · Total SKUs: **50**
-- Avg discrepancy/SKU: **10.7** · SKUs wrong forecast: **28** · Failure rate: **56%**
+- Total Forecast: **6,695** · Actual Received: **5,940** · Total SKUs: **600**
+- Avg discrepancy/SKU: **2.5** · SKUs wrong forecast: **261** · Failure rate: **43%**
 
-**Say:** *"Out of 50 cake–branch combinations, the system flags 28 as wrong. 2,349 units actually arrived against a forecast of 2,560 — a 535-unit gap. The top rows of the report are exactly where you lost product."*
+**Say:** *"Out of 600 cake–branch combinations across 20 branches, the system flags 261 as wrong. 5,940 units actually arrived against a forecast of 6,695 — a 1,483-unit gap. The top rows of the report are exactly where you lost product."*
 
 **The 9-column report** (sorted by biggest discrepancy):
 Item No · Item Name · Branch · Forecast · Actual Sales · Actual Received · Discrepancy · % Error · Status badge (Accurate / Over forecast / Under forecast).
 
 - **Filters:** Branch, Period, Product — the whole dashboard re-derives from the DB.
 - **Export:** CSV / JSON / XML buttons in the header — the same data you see, downloadable.
-- Click **Period 2, Branch = BR-D** → the outage shows: CAKE-001 (fc 66, received 0), CAKE-003 (fc 32, received 0), CAKE-006 (fc 40, received 0) — **zero receipts because of the April supply failure**. This is the "aha" moment.
+- Click **Period 2, Branch = BR-D** → the outage shows: CAKE-001 (fc 35, received 0), CAKE-013 (fc 22, received 0), CAKE-006 (fc 21, received 0), CAKE-003 (fc 17, received 0), CAKE-024 (fc 16, received 0) — **zero receipts because of the April supply failure**. BR-D P2 failure rate hits **100%** — the "aha" moment.
 
-> **What to say for the 0s:** *"In April, branch BR-D received nothing for three cakes. The dashboard flags all three as over-forecast — not because the forecast was wrong, but because nothing arrived. That's the system catching a supply-chain failure, not a math error."*
+> **What to say for the 0s:** *"In April, branch BR-D received nothing for five cakes. The dashboard flags them all as over-forecast — not because the forecast was wrong, but because nothing arrived. That's the system catching a supply-chain failure, not a math error."*
 
 ### 3.4 Forecast — "upload + view one month's plan"
 - Left: the 6 **period cards** (name, entry count, date range).
 - **Upload** a forecast file (CSV / Excel / JSON) per period — the parser accepts many layouts and previews a summary (entries, total forecast quantity).
-- Searchable, paginated entries table (Item No, Item Name, Branch, Qty, Date).
+- Filterable tables by **Branch** and **Product** dropdowns, plus searchable, paginated entries (Item No, Item Name, Branch, Qty, Date).
+- **Export** per period as CSV / JSON / XML.
 - "Clear period" to wipe a period.
 - **Demo tip:** click through P1…P6 to show quantities rising into the summer (seasonality), e.g. Strawberry Shortcake peaks in July.
 
 ### 3.5 Actual Transfers — "what actually arrived"
 - **Record a transfer** (form) or **Bulk upload** a file — rows go straight into the database.
-- **Filter by:** branch + period (P1–P6 dropdown) **OR** branch + from/to date range.
+- **Filter by:** branch + product + period (P1–P6 dropdown) **OR** branch + product + from/to date range.
 - Stats: records, total quantity received, active filter.
 - **Export** the generated report as CSV / JSON / XML.
-- **Show:** Period 2 (April) + BR-D → 10 rows; the 3 outage cakes appear with quantity 0.
+- Data is receipt-level: a cake can arrive in several batches on different days of the month, and some SKU/outlet months receive no delivery at all (no rows = stockout).
+- **Show:** Period 2 (April) + BR-D → ~49 delivery rows spread across many April dates (batching visible); the 5 outage cakes have no rows — delivered units 0.
 
-### 3.6 Inventory — "stock health across every branch"
-- Built from the core daily-sales dataset (web demo of the classic inventory module).
-- Table: Product, Category, Outlet, Stock, Avg daily sales, **Days remaining** (with a colour-coded days-of-cover bar), Return rate, Status badge, trend arrow.
-- **Search box** (product/category/outlet), **status filter**, sortable columns.
-- Status logic (computed, not mocked): stock = 0 & selling → **Critical** · <2 days cover → **Critical** · <5 days → **Low stock** · >30 days → **Overstock** · avg sales >20 → **High demand**.
-
-### 3.7 Reordering Point — "exact reorder quantities" (the second money screen)
+### 3.6 Reordering Point — "exact reorder quantities" (the second money screen)
 - Two upload cards: **MRP file** and **stock file**.
 - "Generate ROP report" → computes requirement vs stock, missing stock treated as 0.
 - Summary cards: **Total 12 · Safe 7 · Reorder 5**.
-- Table: Item Code, Item Name, MRP Monthly Qty, Stock On Hand, Action (green SAFE / red ORDER), **Order More** (exact units to order).
-- Show the ORDER lines: **Eggs 3,360 · Butter 156 · Vanilla Essence 90 · Strawberry Jam 77 · Milk 63**.
+- Table: Item Code, Item Name, MRP Monthly Qty, Stock On Hand, Action (green SAFE / **orange SAFE – overstocked >25%** / red ORDER), **Order More** (exact units to order).
+- Show the ORDER lines: **Eggs 3,360 · Butter 156 · Vanilla Essence 90 · Strawberry Jam 77 · Milk 63**; then the orange overstock rows (RM-001 Flour, RM-009 Cream, RM-012 Lemon Extract).
 - Export CSV / JSON / XML.
 
 ---
@@ -146,17 +146,16 @@ Item No · Item Name · Branch · Forecast · Actual Sales · Actual Received ·
 **Setup before audience:** server running, DB fresh, browser open on `http://localhost:8000`.
 
 1. **0:00 – Splash.** Let the logo breathe. *"White overlay, 50% transparent — the bakery logo pulses until everything is loaded, then it melts away."*
-2. **0:20 – Sidebar + top bar.** Name the 5 pages and the groups. Point to the green **Live** badge and **Test System** reset.
-3. **0:40 – Dashboard P1 all.** Read the six KPIs (2560 / 2349 / 50 / 10.7 / 28 / 56%).
-4. **1:10 – Report drill-down.** Scroll the table; point at top row (Chocolate Fudge, biggest gap). Mention badges (Over/Under/Accurate).
-5. **1:40 – THE OUTAGE.** Set Branch=BR-D, Period=2. *"April, branch D: three cakes received zero. That's a supply failure, and the system flags it instantly."* Reset to P1 All.
+2. **0:20 – Sidebar + top bar.** Name the 4 pages and the groups. Point to the green **Live** badge and **Test System** reset.
+3. **0:40 – Dashboard P1 all.** Read the six KPIs (6,695 / 5,940 / 600 / 2.5 / 261 / 43%).
+4. **1:10 – Report drill-down.** Scroll the table; point at top row (biggest gap). Mention badges (Over/Under/Accurate).
+5. **1:40 – THE OUTAGE.** Set Branch=BR-D, Period=2. *"April, branch D: five cakes received zero. A supply failure the system flags instantly — the branch failure rate hits 100%."* Reset to P1 All.
 6. **2:10 – Export.** Click **CSV** — show the downloaded file. *"Every report exports."*
 7. **2:40 – Forecast.** Click P5/P6, show seasonality growth. *"This is the demand plan we upload each month; the rest of the app checks whether it happened."*
-8. **3:10 – Actual Transfers.** Period=2, BR-D → 10 rows, 3 zeros. Switch to Duration filter (July 1–31) to show the date-range mode. *"This is the receipt log — bulk-uploadable."*
-9. **3:50 – Inventory.** Search "flour", sort by stock, show the days-cover bars and status badges.
-10. **4:20 – Reordering Point.** *"Now the question every bakery asks: what do I reorder?"* Show 7 Safe / 5 Reorder. Click the table row for Eggs: *"Stock 840 of 4,200 needed — order 3,360."*
-11. **5:00 – Export + reset.** Export the ROP report. *"If anything every gets messed up, one click on Test System rebuilds the whole demo database."*
-12. **5:20 – Closing.** *"It's a live-data system — dashboard, uploads, reordering, exports — and it works end-to-end..."* (Q&A)
+8. **3:10 – Actual Transfers.** Period=2, BR-D → ~49 delivery rows across many April dates; the outage cakes have zero. Switch to Duration filter (July 1–31) to show the date-range mode. *"This is the receipt log — bulk-uploadable, receipt-by-receipt."*
+9. **3:50 – Reordering Point.** *"Now the question every bakery asks: what do I reorder?"* Show 7 Safe / 5 Reorder, plus the orange overstock rows. Click the table row for Eggs: *"Stock 840 of 4,200 needed — order 3,360."*
+10. **5:00 – Export + reset.** Export the ROP report. *"If anything ever gets messed up, one click on Test System rebuilds the whole demo database."*
+11. **5:20 – Closing.** *"It's a live-data system — dashboard, uploads, reordering, exports — and it works end-to-end..."* (Q&A)
 
 **Backup plan if a screen is empty:** click **Test System** (top-right) → it reseeds the DB and reloads → data returns.
 
@@ -169,9 +168,9 @@ Item No · Item Name · Branch · Forecast · Actual Sales · Actual Received ·
 - `% error = discrepancy / forecast × 100`
 - **Status:** Accurate (within ±20%) · Over forecast (received ≈ 0 or +20%+) · Under forecast (received > 0 with no forecast, or −20% beyond)
 - `Total discrepancy = Σ |discrepancy|`
-- `pct_forecast_wrong = total_discrepancy / total_forecast × 100` (**20.9%** for P1)
-- `Average discrepancy / SKU = total_discrepancy / total_skus` (**10.7**)
-- `Failure rate = wrong SKUs / total SKUs` (**56%**)
+- `pct_forecast_wrong = total_discrepancy / total_forecast × 100` (**22.2%** for P1)
+- `Average discrepancy / SKU = total_discrepancy / total_skus` (**2.5**)
+- `Failure rate = wrong SKUs / total SKUs` (**43.5%**)
 
 ### 5.2 How ROP decides
 ```
@@ -181,7 +180,7 @@ else                                 →  ORDER (red) …, order quantity = requ
 Missing stock = 0 (so an item with no stock file row is treated as short → red).
 
 ### 5.3 API surface (all get/put real data; nothing mocked)
-- `GET /api/health` — status + row count (e.g. `{"status":"ok","rows":20650}`)
+- `GET /api/health` — status + row count (e.g. `{"status":"ok","rows":247800}`)
 - `GET /api/branches`, `GET /api/products/list`, `GET /api/forecast/periods`
 - `GET /api/forecast/entries?period=N`, `POST /api/forecast/upload`, `DELETE /api/forecast/clear`
 - `POST /api/actual-transfers/entry`, `GET /api/actual-transfers?branch=&period=&from_date=&to_date=`, `POST /api/actual-transfers/upload`, `GET /api/actual-transfers/export?format=`
@@ -191,7 +190,7 @@ Missing stock = 0 (so an item with no stock file row is treated as short → red
 - **ML (bonus endpoints):** `GET /api/forecast/{cake}/{outlet}` (trains Baseline + Holt-Winters + ARIMA + XGBoost and returns MAE/RMSE/MAPE), `GET /api/model-comparison/{cake}/{outlet}`, `GET /api/inventory-optimization/{cake}/{outlet}`, `GET /api/sales/{cake}/{outlet}?days=N`
 
 ### 5.4 Database (SQLite)
-Tables: `forecast_entries` (300 rows) · `actual_transfers` (300) · `mrp_data` (12) · `accurate_forecast` (50) · `stock_on_hand` (12) · plus the training `sales.csv` (20,650 rows). One click on **Test System** rebuilds the seeds.
+Tables: `forecast_entries` (3,600 rows) · `actual_transfers` (7,170 receipt rows) · `mrp_data` (12) · `accurate_forecast` (600) · `stock_on_hand` (12) · plus the training `sales.csv` (247,800 rows). One click on **Test System** rebuilds the seeds.
 
 ### 5.5 Data story construct
 Seed script (`scripts/build_sample_data.py`) models reality as three layers: **cake bias → branch reliability → documented outages**. Forecast = base × season × branch share. Actual = forecast × bias × reliability. This is *deliberate, documented metadata* — it's what lets the demo demonstrate a real interpretable scenario (under-forecast brands, an over-stocked branch, and one catastrophic outage) instead of random noise.
@@ -225,7 +224,7 @@ Seed script (`scripts/build_sample_data.py`) models reality as three layers: **c
 ## 8. LIKELY Q&A (short answers)
 
 - **Is this real data?** It's a curated, deterministic seed dataset — every number is computed by the backend from that seed, not hardcoded in the UI. Re-seedable with one click.
-- **How many branches/cakes/materials?** 5 branches · 10 cakes · 12 raw materials · 6 monthly periods.
+- **How many branches/cakes/materials?** 20 branches · 30 cakes · 12 raw materials · 6 monthly periods.
 - **Which ML models?** Baseline, Holt–Winters, ARIMA, XGBoost — trained on 330 days, evaluated with MAE/RMSE/MAPE via the bonus `/api/forecast/{cake}/{outlet}` endpoint.
 - **Can I export?** Every report — Dashboard, Actual Transfers, ROP — exports to CSV, JSON, or XML.
 - **What tech?** React + TypeScript + Tailwind UI; FastAPI backend; SQLite; deployable to Render.

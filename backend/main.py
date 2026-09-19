@@ -250,6 +250,21 @@ BRANCHES = [
     {"id": "branch-c", "code": "BR-C", "name": "Branch C"},
     {"id": "branch-d", "code": "BR-D", "name": "Branch D"},
     {"id": "branch-e", "code": "BR-E", "name": "Branch E"},
+    {"id": "branch-f", "code": "BR-F", "name": "Branch F"},
+    {"id": "branch-g", "code": "BR-G", "name": "Branch G"},
+    {"id": "branch-h", "code": "BR-H", "name": "Branch H"},
+    {"id": "branch-i", "code": "BR-I", "name": "Branch I"},
+    {"id": "branch-j", "code": "BR-J", "name": "Branch J"},
+    {"id": "branch-k", "code": "BR-K", "name": "Branch K"},
+    {"id": "branch-l", "code": "BR-L", "name": "Branch L"},
+    {"id": "branch-m", "code": "BR-M", "name": "Branch M"},
+    {"id": "branch-n", "code": "BR-N", "name": "Branch N"},
+    {"id": "branch-o", "code": "BR-O", "name": "Branch O"},
+    {"id": "branch-p", "code": "BR-P", "name": "Branch P"},
+    {"id": "branch-q", "code": "BR-Q", "name": "Branch Q"},
+    {"id": "branch-r", "code": "BR-R", "name": "Branch R"},
+    {"id": "branch-s", "code": "BR-S", "name": "Branch S"},
+    {"id": "branch-t", "code": "BR-T", "name": "Branch T"},
 ]
 
 BRANCH_BY_CODE = {b["code"]: b for b in BRANCHES}
@@ -472,15 +487,19 @@ def add_actual_transfer(payload: dict):
 
 
 @app.get("/api/actual-transfers")
-def get_actual_transfers(branch: str = "", from_date: str = "", to_date: str = "", period: int = 0):
-    """Return actual transfers. Filter by branch, a forecast period (P1..P6),
-    or a from/to date range."""
+def get_actual_transfers(branch: str = "", item_code: str = "", from_date: str = "",
+                         to_date: str = "", period: int = 0):
+    """Return actual transfers. Filter by branch, product (item code), a forecast
+    period (P1..P6), or a from/to date range."""
     conn = get_conn()
     sql = "SELECT id, branch_code, item_code, item_name, quantity, date FROM actual_transfers WHERE 1=1"
     params = []
     if branch and branch != "all":
         sql += " AND branch_code = ?"
         params.append(branch)
+    if item_code and item_code != "all":
+        sql += " AND item_code = ?"
+        params.append(item_code)
     if period:
         dates = [
             r["date"] for r in conn.execute(
@@ -507,11 +526,15 @@ def get_actual_transfers(branch: str = "", from_date: str = "", to_date: str = "
 
 
 @app.get("/api/actual-transfers/export")
-def export_actual_transfers(format: str = "csv", branch: str = "", period: int = 0,
-                            from_date: str = "", to_date: str = ""):
-    data = get_actual_transfers(branch, from_date, to_date, period)
+def export_actual_transfers(format: str = "csv", branch: str = "", item_code: str = "",
+                            period: int = 0, from_date: str = "", to_date: str = ""):
+    data = get_actual_transfers(branch, item_code, from_date, to_date, period)
     fieldnames = ["id", "branch_code", "item_code", "item_name", "quantity", "date"]
-    filename = f"actual-transfers-p{period}" if period else "actual-transfers"
+    filename = "actual-transfers"
+    if period:
+        filename += f"-p{period}"
+    if item_code:
+        filename += f"-{item_code}"
     return _serialize_report(data, fieldnames, format, filename)
 
 

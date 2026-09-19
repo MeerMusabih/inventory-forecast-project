@@ -9,10 +9,12 @@ import {
   getActualTransfers,
   getBranches,
   getForecastPeriods,
+  getProductCodes,
   uploadActualTransfersFile,
   type ActualTransfer,
   type BranchInfo,
   type ForecastPeriod,
+  type ProductCode,
 } from '../api/client'
 
 type DateMode = 'period' | 'duration'
@@ -29,8 +31,10 @@ interface DraftRow {
 export default function ActualTransfers() {
   const [branches, setBranches] = useState<BranchInfo[]>([])
   const [periods, setPeriods] = useState<ForecastPeriod[]>([])
+  const [products, setProducts] = useState<ProductCode[]>([])
   const [mode, setMode] = useState<DateMode>('period')
   const [branch, setBranch] = useState('all')
+  const [product, setProduct] = useState('all')
   const [period, setPeriod] = useState(1)
   const [fromDate, setFromDate] = useState('')
   const [toDate, setToDate] = useState('')
@@ -44,12 +48,13 @@ export default function ActualTransfers() {
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
 
-  const refresh = useCallback(async (b: string, m: DateMode, p: number, f: string, t: string) => {
+  const refresh = useCallback(async (b: string, p: string, m: DateMode, per: number, f: string, t: string) => {
     setLoading(true)
     try {
       const data = await getActualTransfers(
         b,
-        m === 'period' ? { period: p } : { fromDate: f, toDate: t }
+        p,
+        m === 'period' ? { period: per } : { fromDate: f, toDate: t }
       )
       setTransfers(data)
     } finally {
@@ -60,14 +65,15 @@ export default function ActualTransfers() {
   useEffect(() => {
     getBranches().then(setBranches)
     getForecastPeriods().then(setPeriods)
+    getProductCodes().then(setProducts)
   }, [])
 
   useEffect(() => {
-    refresh(branch, mode, period, fromDate, toDate)
-  }, [branch, mode, period, fromDate, toDate, refresh])
+    refresh(branch, product, mode, period, fromDate, toDate)
+  }, [branch, product, mode, period, fromDate, toDate, refresh])
 
   function applyFilters() {
-    refresh(branch, mode, period, fromDate, toDate)
+    refresh(branch, product, mode, period, fromDate, toDate)
   }
 
   async function handleExport(format: 'csv' | 'json' | 'xml') {
@@ -77,6 +83,7 @@ export default function ActualTransfers() {
       const content = await exportActualTransfers(
         format,
         branch,
+        product,
         mode === 'period' ? { period } : { fromDate, toDate }
       )
       const mime = format === 'json' ? 'application/json' : format === 'xml' ? 'application/xml' : 'text/csv'
@@ -145,6 +152,7 @@ export default function ActualTransfers() {
   const totalQty = transfers.reduce((s, t) => s + t.quantity, 0)
   const activeBranchName = branch === 'all' ? 'All branches' : branches.find(b => b.code === branch)?.name || branch
   const activePeriod = periods.find(p => p.period === period)
+  const activeProduct = product === 'all' ? 'All products' : products.find(p => p.code === product)?.name || product
 
   return (
     <div className="space-y-6">
@@ -194,6 +202,17 @@ export default function ActualTransfers() {
               {branches.map(b => (
                 <option key={b.code} value={b.code}>
                   {b.name} ({b.code})
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="min-w-52">
+            <label className="label">Product</label>
+            <select value={product} onChange={e => setProduct(e.target.value)} className="select w-full">
+              <option value="all">All Products</option>
+              {products.map(p => (
+                <option key={p.code} value={p.code}>
+                  {p.code} — {p.name}
                 </option>
               ))}
             </select>
@@ -262,6 +281,9 @@ export default function ActualTransfers() {
             </span>
           </div>
           <p className="text-lg font-semibold text-ink mt-3">{activeBranchName}</p>
+          <p className="text-xs text-muted mt-0.5">
+            {activeProduct}
+          </p>
           <p className="text-xs text-muted mt-0.5">
             {mode === 'period'
               ? (activePeriod?.name || `Period ${period}`)

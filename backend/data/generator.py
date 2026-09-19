@@ -1,27 +1,81 @@
 import numpy as np
 import pandas as pd
-from dataclasses import dataclass, field
+from dataclasses import dataclass
+
+OUTLET_NAMES = [
+    "Main Market", "City Center", "Mall Branch", "Residential Branch", "Highway Branch",
+    "Harbour Front", "Garden District", "North Gate", "Old Town", "University Row",
+    "Airport Plaza", "Riverside", "Station Square", "Westfield", "Park Lane",
+    "Cafe Quarter", "Hill View", "Market Street", "Sunset Road", "Union Square",
+]
 
 OUTLETS = [
-    {"id": "outlet-1", "name": "Main Market", "type": "urban"},
-    {"id": "outlet-2", "name": "City Center", "type": "urban"},
-    {"id": "outlet-3", "name": "Mall Branch", "type": "urban"},
-    {"id": "outlet-4", "name": "Residential Branch", "type": "suburban"},
-    {"id": "outlet-5", "name": "Highway Branch", "type": "highway"},
+    {
+        "id": f"outlet-{i + 1}",
+        "name": OUTLET_NAMES[i],
+        "type": ["urban", "suburban", "highway", "urban", "rural"][i % 5],
+    }
+    for i in range(20)
 ]
 
-PRODUCT_PROFILES = [
-    {"id": "CAKE-001", "name": "Chocolate Fudge Cake", "category": "Bakery", "cost": 9.00, "price": 28.00, "baseDemand": 8, "volatility": 0.25, "seasonalPeak": 160, "weekendBoost": 1.35, "returnRate": 0.03, "weights": {"outlet-1": 1.2, "outlet-2": 1.0, "outlet-3": 1.4, "outlet-4": 0.9, "outlet-5": 0.6}, "trend": 0.01},
-    {"id": "CAKE-002", "name": "Vanilla Sponge Cake", "category": "Bakery", "cost": 7.50, "price": 24.00, "baseDemand": 7, "volatility": 0.20, "seasonalPeak": None, "weekendBoost": 1.30, "returnRate": 0.03, "weights": {"outlet-1": 1.1, "outlet-2": 1.0, "outlet-3": 1.1, "outlet-4": 1.3, "outlet-5": 0.5}, "trend": 0.005},
-    {"id": "CAKE-003", "name": "Red Velvet Cake", "category": "Bakery", "cost": 11.00, "price": 32.00, "baseDemand": 5, "volatility": 0.28, "seasonalPeak": 60, "weekendBoost": 1.40, "returnRate": 0.03, "weights": {"outlet-1": 1.0, "outlet-2": 0.9, "outlet-3": 1.6, "outlet-4": 0.8, "outlet-5": 0.4}, "trend": 0.0},
-    {"id": "CAKE-004", "name": "Lemon Drizzle Cake", "category": "Bakery", "cost": 6.50, "price": 22.00, "baseDemand": 4, "volatility": 0.22, "seasonalPeak": None, "weekendBoost": 1.25, "returnRate": 0.02, "weights": {"outlet-1": 1.1, "outlet-2": 1.0, "outlet-3": 0.8, "outlet-4": 1.2, "outlet-5": 0.6}, "trend": -0.01},
-    {"id": "CAKE-005", "name": "Carrot Cake", "category": "Bakery", "cost": 8.00, "price": 26.00, "baseDemand": 4, "volatility": 0.25, "seasonalPeak": None, "weekendBoost": 1.25, "returnRate": 0.02, "weights": {"outlet-1": 1.0, "outlet-2": 0.9, "outlet-3": 1.0, "outlet-4": 1.4, "outlet-5": 0.5}, "trend": 0.005},
-    {"id": "CAKE-006", "name": "Black Forest Cake", "category": "Bakery", "cost": 10.00, "price": 30.00, "baseDemand": 5, "volatility": 0.30, "seasonalPeak": 200, "weekendBoost": 1.45, "returnRate": 0.03, "weights": {"outlet-1": 1.0, "outlet-2": 0.8, "outlet-3": 1.5, "outlet-4": 0.7, "outlet-5": 1.0}, "trend": 0.01},
-    {"id": "CAKE-007", "name": "Strawberry Shortcake", "category": "Bakery", "cost": 8.50, "price": 27.00, "baseDemand": 5, "volatility": 0.30, "seasonalPeak": 197, "weekendBoost": 1.40, "returnRate": 0.06, "weights": {"outlet-1": 1.1, "outlet-2": 1.0, "outlet-3": 1.0, "outlet-4": 1.2, "outlet-5": 0.5}, "trend": 0.015},
-    {"id": "CAKE-008", "name": "Whole-Wheat Cake", "category": "Bakery", "cost": 5.50, "price": 20.00, "baseDemand": 3, "volatility": 0.18, "seasonalPeak": None, "weekendBoost": 1.20, "returnRate": 0.02, "weights": {"outlet-1": 1.0, "outlet-2": 0.9, "outlet-3": 0.7, "outlet-4": 1.5, "outlet-5": 0.4}, "trend": 0.01},
-    {"id": "CAKE-009", "name": "Pineapple Upside-Down Cake", "category": "Bakery", "cost": 7.00, "price": 24.00, "baseDemand": 4, "volatility": 0.22, "seasonalPeak": None, "weekendBoost": 1.30, "returnRate": 0.02, "weights": {"outlet-1": 1.0, "outlet-2": 0.9, "outlet-3": 0.9, "outlet-4": 1.2, "outlet-5": 0.7}, "trend": 0.0},
-    {"id": "CAKE-010", "name": "Butter Cake", "category": "Bakery", "cost": 5.00, "price": 18.00, "baseDemand": 6, "volatility": 0.20, "seasonalPeak": None, "weekendBoost": 1.30, "returnRate": 0.03, "weights": {"outlet-1": 1.2, "outlet-2": 1.1, "outlet-3": 0.9, "outlet-4": 1.3, "outlet-5": 0.6}, "trend": 0.0},
+# --- Cakes: (name, cost, price, baseDemand, volatility, seasonalPeak, weekendBoost, returnRate, trend)
+# Same 30 cakes as scripts/build_sample_data.py so the two tiers tell one story.
+CAKE_SEED = [
+    ("Chocolate Fudge Cake", 9.00, 28.00, 8, 0.25, 160, 1.35, 0.03, 0.01),
+    ("Vanilla Sponge Cake", 7.50, 24.00, 7, 0.20, None, 1.30, 0.03, 0.005),
+    ("Red Velvet Cake", 11.00, 32.00, 5, 0.28, 60, 1.40, 0.03, 0.0),
+    ("Lemon Drizzle Cake", 6.50, 22.00, 4, 0.22, None, 1.25, 0.02, -0.01),
+    ("Carrot Cake", 8.00, 26.00, 4, 0.25, None, 1.25, 0.02, 0.005),
+    ("Black Forest Cake", 10.00, 30.00, 5, 0.30, 200, 1.45, 0.03, 0.01),
+    ("Strawberry Shortcake", 8.50, 27.00, 5, 0.30, 197, 1.40, 0.06, 0.015),
+    ("Whole-Wheat Cake", 5.50, 20.00, 3, 0.18, None, 1.20, 0.02, 0.01),
+    ("Pineapple Upside-Down Cake", 7.00, 24.00, 4, 0.22, None, 1.30, 0.02, 0.0),
+    ("Butter Cake", 5.00, 18.00, 6, 0.20, None, 1.30, 0.03, 0.0),
+    ("German Chocolate Cake", 10.50, 31.00, 5, 0.26, 150, 1.35, 0.03, 0.01),
+    ("Tiramisu Cake", 11.00, 33.00, 5, 0.28, 105, 1.40, 0.03, 0.01),
+    ("Cheesecake", 10.00, 30.00, 5, 0.22, None, 1.30, 0.02, 0.005),
+    ("Banana Walnut Cake", 7.50, 25.00, 4, 0.24, None, 1.25, 0.03, 0.005),
+    ("Apple Cinnamon Cake", 7.00, 24.00, 4, 0.22, None, 1.30, 0.02, -0.01),
+    ("Coconut Cake", 7.50, 25.00, 4, 0.22, None, 1.28, 0.02, 0.005),
+    ("Marble Cake", 6.00, 21.00, 5, 0.20, None, 1.25, 0.03, 0.0),
+    ("Mango Mousse Cake", 9.50, 29.00, 5, 0.28, 170, 1.40, 0.03, 0.01),
+    ("Blueberry Muffin Tray", 8.00, 26.00, 6, 0.24, None, 1.35, 0.03, 0.01),
+    ("Almond Gateau", 10.00, 31.00, 4, 0.26, 130, 1.35, 0.02, 0.01),
+    ("Hazelnut Praline Cake", 10.50, 32.00, 4, 0.26, None, 1.35, 0.03, 0.005),
+    ("Orange Chiffon Cake", 7.00, 23.00, 4, 0.20, None, 1.25, 0.02, 0.005),
+    ("Pistachio Cake", 12.00, 35.00, 3, 0.24, None, 1.35, 0.03, 0.0),
+    ("Tres Leches Cake", 8.50, 27.00, 4, 0.26, 120, 1.35, 0.03, 0.01),
+    ("Honey Cake", 7.00, 22.00, 3, 0.20, None, 1.25, 0.02, 0.005),
+    ("Coffee Cake", 6.50, 22.00, 4, 0.22, None, 1.25, 0.02, -0.01),
+    ("Fruit Gateau", 9.00, 28.00, 5, 0.24, 90, 1.40, 0.03, 0.01),
+    ("Coconut Macaroon Tray", 6.00, 20.00, 3, 0.20, None, 1.25, 0.02, 0.005),
+    ("Lemon Meringue Cake", 7.50, 25.00, 4, 0.24, 140, 1.35, 0.03, 0.005),
+    ("Truffle Brownie Cake", 11.50, 34.00, 5, 0.28, 200, 1.45, 0.03, 0.01),
 ]
+
+PRODUCT_PROFILES = []
+for idx, (name, cost, price, base, vol, peak, wb, ret, trend) in enumerate(CAKE_SEED, start=1):
+    pid = f"CAKE-{idx:03d}"
+    weights = {}
+    for o in range(len(OUTLETS)):
+        oid = OUTLETS[o]["id"]
+        base_w = 1.0 + (o % 5) * 0.1
+        aff = 0.85 + ((idx * 7 + o * 13) % 11) * 0.03
+        weights[oid] = round(base_w * aff, 2)
+    PRODUCT_PROFILES.append({
+        "id": pid,
+        "name": name,
+        "category": "Bakery",
+        "cost": cost,
+        "price": price,
+        "baseDemand": base,
+        "volatility": vol,
+        "seasonalPeak": peak,
+        "weekendBoost": wb,
+        "returnRate": ret,
+        "weights": weights,
+        "trend": trend,
+    })
 
 
 def mulberry32(a):
@@ -45,14 +99,14 @@ def gaussian_random(rng):
     return np.sqrt(-2.0 * np.log(u)) * np.cos(2.0 * np.pi * v)
 
 
+@dataclass
 class StockProfile:
-    def __init__(self, initial_mult, reorder_freq, reorder_qty_mult, has_supply_issue, supply_start, supply_end):
-        self.initial_mult = initial_mult
-        self.reorder_freq = reorder_freq
-        self.reorder_qty_mult = reorder_qty_mult
-        self.has_supply_issue = has_supply_issue
-        self.supply_start = supply_start
-        self.supply_end = supply_end
+    initial_mult: float
+    reorder_freq: float
+    reorder_qty_mult: float
+    has_supply_issue: bool
+    supply_start: int
+    supply_end: int
 
 
 def generate_data(seed=54321):
@@ -121,13 +175,6 @@ def generate_data(seed=54321):
 
                 if profile["trend"] != 0:
                     demand *= 1 + profile["trend"] * day_progress
-
-                if oid == "outlet-3" and profile["category"] == "Fresh Produce":
-                    demand *= 0.5 + rng() * 0.3
-                if oid == "outlet-5" and profile["category"] in ["Dairy & Eggs", "Household"]:
-                    demand *= 0.2 + rng() * 0.2
-                if oid == "outlet-4" and profile["category"] == "Frozen Foods":
-                    demand *= 0.8 + rng() * 0.4
 
                 if d_idx > total_days * 0.85 and rng() < 0.08:
                     demand *= 1.8 + rng() * 0.5

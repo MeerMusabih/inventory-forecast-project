@@ -308,10 +308,12 @@ export async function clearForecast(period: number): Promise<{ cleared: number }
 
 export async function getActualTransfers(
   branch: string,
+  product: string,
   opts: { period?: number; fromDate?: string; toDate?: string } = {}
 ): Promise<ActualTransfer[]> {
   const params = new URLSearchParams();
   if (branch && branch !== "all") params.set("branch", branch);
+  if (product && product !== "all") params.set("item_code", product);
   if (opts.period) params.set("period", String(opts.period));
   if (opts.fromDate) params.set("from_date", opts.fromDate);
   if (opts.toDate) params.set("to_date", opts.toDate);
@@ -321,11 +323,13 @@ export async function getActualTransfers(
 export async function exportActualTransfers(
   format: "csv" | "json" | "xml",
   branch: string,
+  product: string,
   opts: { period?: number; fromDate?: string; toDate?: string } = {}
 ): Promise<string> {
   const params = new URLSearchParams();
   params.set("format", format);
   if (branch && branch !== "all") params.set("branch", branch);
+  if (product && product !== "all") params.set("item_code", product);
   if (opts.period) params.set("period", String(opts.period));
   if (opts.fromDate) params.set("from_date", opts.fromDate);
   if (opts.toDate) params.set("to_date", opts.toDate);

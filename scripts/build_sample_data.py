@@ -4,8 +4,8 @@ Build the curated sample_data set for the Inventory Intelligence demo (cakes).
 
 Two product domains, standing next to each other:
 
-  1. CAKES  - forecast, actual transfers and the dashboard track ~10 kinds of
-              cake sold through 5 branches over 6 months (Mar-Aug 2026).
+  1. CAKES  - forecast, actual transfers and the dashboard track ~30 kinds of
+              cake sold through 20 branches over 6 months (Mar-Aug 2026).
 
   2. RAW MATERIALS - the MRP / ROP pages plan and reorder the ingredients used
               to bake those cakes. The MRP monthly requirement for each raw
@@ -25,6 +25,7 @@ Forecast periods are calendar months: P1 = March 2026 ... P6 = August 2026.
 """
 from math import ceil
 from pathlib import Path
+import random
 
 import pandas as pd
 
@@ -32,8 +33,15 @@ HERE = Path(__file__).resolve().parent.parent
 SAMPLES = HERE / "sample_data"
 SAMPLES.mkdir(parents=True, exist_ok=True)
 
-BRANCHES = ["BR-A", "BR-B", "BR-C", "BR-D", "BR-E"]
-BRANCH_SHARE = {"BR-A": 0.30, "BR-B": 0.25, "BR-C": 0.20, "BR-D": 0.15, "BR-E": 0.10}
+BRANCHES = ["BR-A", "BR-B", "BR-C", "BR-D", "BR-E", "BR-F", "BR-G", "BR-H", "BR-I",
+            "BR-J", "BR-K", "BR-L", "BR-M", "BR-N", "BR-O", "BR-P", "BR-Q", "BR-R",
+            "BR-S", "BR-T"]
+BRANCH_SHARE = {
+    "BR-A": 0.12, "BR-B": 0.10, "BR-C": 0.09, "BR-D": 0.08, "BR-E": 0.07,
+    "BR-F": 0.06, "BR-G": 0.06, "BR-H": 0.05, "BR-I": 0.05, "BR-J": 0.05,
+    "BR-K": 0.04, "BR-L": 0.04, "BR-M": 0.03, "BR-N": 0.03, "BR-O": 0.03,
+    "BR-P": 0.03, "BR-Q": 0.02, "BR-R": 0.02, "BR-S": 0.02, "BR-T": 0.01,
+}
 
 PERIODS = [(1, 3, 2026), (2, 4, 2026), (3, 5, 2026), (4, 6, 2026), (5, 7, 2026), (6, 8, 2026)]
 
@@ -49,6 +57,26 @@ CAKES = [
     ("CAKE-008", "Whole-Wheat Cake", 150, [1.00, 1.00, 1.00, 1.00, 1.00, 1.00]),
     ("CAKE-009", "Pineapple Upside-Down Cake", 190, [1.00, 1.02, 1.06, 1.10, 1.12, 1.10]),
     ("CAKE-010", "Butter Cake", 340, [1.00, 1.00, 1.02, 1.05, 1.06, 1.05]),
+    ("CAKE-011", "German Chocolate Cake", 240, [1.00, 1.03, 1.08, 1.12, 1.15, 1.10]),
+    ("CAKE-012", "Tiramisu Cake", 260, [1.00, 1.05, 1.15, 1.22, 1.18, 1.08]),
+    ("CAKE-013", "Cheesecake", 280, [1.00, 1.00, 1.10, 1.16, 1.20, 1.15]),
+    ("CAKE-014", "Banana Walnut Cake", 190, [1.00, 1.00, 1.03, 1.06, 1.05, 1.05]),
+    ("CAKE-015", "Apple Cinnamon Cake", 200, [1.00, 0.98, 0.95, 0.92, 0.90, 0.85]),
+    ("CAKE-016", "Coconut Cake", 170, [1.00, 1.02, 1.05, 1.08, 1.06, 1.04]),
+    ("CAKE-017", "Marble Cake", 230, [1.00, 1.00, 1.02, 1.04, 1.05, 1.03]),
+    ("CAKE-018", "Mango Mousse Cake", 210, [1.00, 1.12, 1.26, 1.30, 1.22, 1.10]),
+    ("CAKE-019", "Blueberry Muffin Tray", 300, [1.00, 1.02, 1.05, 1.08, 1.10, 1.06]),
+    ("CAKE-020", "Almond Gateau", 180, [1.00, 1.00, 1.05, 1.10, 1.12, 1.08]),
+    ("CAKE-021", "Hazelnut Praline Cake", 160, [1.00, 1.03, 1.08, 1.10, 1.08, 1.05]),
+    ("CAKE-022", "Orange Chiffon Cake", 200, [1.00, 1.05, 1.10, 1.08, 1.05, 1.00]),
+    ("CAKE-023", "Pistachio Cake", 150, [1.00, 0.98, 0.95, 0.92, 0.90, 0.88]),
+    ("CAKE-024", "Tres Leches Cake", 190, [1.00, 1.06, 1.12, 1.18, 1.12, 1.06]),
+    ("CAKE-025", "Honey Cake", 140, [1.00, 1.00, 1.02, 1.04, 1.05, 1.02]),
+    ("CAKE-026", "Coffee Cake", 220, [1.00, 1.00, 0.98, 0.95, 0.92, 0.88]),
+    ("CAKE-027", "Fruit Gateau", 250, [1.00, 1.04, 1.10, 1.14, 1.16, 1.12]),
+    ("CAKE-028", "Coconut Macaroon Tray", 130, [1.00, 1.00, 1.03, 1.06, 1.05, 1.04]),
+    ("CAKE-029", "Lemon Meringue Cake", 170, [1.00, 1.06, 1.12, 1.10, 1.05, 0.98]),
+    ("CAKE-030", "Truffle Brownie Cake", 260, [1.00, 1.03, 1.08, 1.20, 1.28, 1.22]),
 ]
 
 # ---------- Raw materials: (code, name, unit, monthly MRP requirement) ----------
@@ -71,8 +99,8 @@ RAW_MATERIALS = [
 RAW_MATERIALS_BY_CODE = {c: (n, u, q) for c, n, u, q in RAW_MATERIALS}
 
 # ---------- Layer 1: cake-level forecast bias (persistent) ----------
-UNDER_CAKES = {"CAKE-001", "CAKE-006", "CAKE-007"}   # demand > forecast
-OVER_CAKES = {"CAKE-003", "CAKE-004", "CAKE-008"}    # forecast > demand
+UNDER_CAKES = {"CAKE-001", "CAKE-006", "CAKE-007", "CAKE-013", "CAKE-018", "CAKE-030"}   # demand > forecast
+OVER_CAKES = {"CAKE-003", "CAKE-004", "CAKE-008", "CAKE-015", "CAKE-023", "CAKE-026"}    # forecast > demand
 
 CAKE_BIAS = {}
 for _code, *_ in CAKES:
@@ -91,12 +119,28 @@ BRANCH_RELIABILITY = {
     "BR-C": [0.98, 1.00, 0.98, 1.10, 0.90, 0.88],  # mild swings, June peak
     "BR-D": [0.82, 0.30, 0.92, 1.08, 0.88, 0.90],  # April supply failure, then recovery
     "BR-E": [1.00, 1.10, 0.92, 1.00, 1.30, 0.55],  # July surge, August collapse
+    "BR-F": [1.02, 1.00, 1.04, 0.98, 1.00, 1.02],  # steady surplus
+    "BR-G": [0.95, 0.97, 1.00, 1.02, 1.00, 0.90],  # consistent
+    "BR-H": [0.85, 0.90, 1.00, 1.10, 1.05, 0.95],  # recovering
+    "BR-I": [1.05, 1.08, 1.00, 0.95, 0.90, 1.00],  # cools down then back
+    "BR-J": [0.90, 0.88, 0.85, 0.90, 0.95, 1.00],  # chronically short
+    "BR-K": [1.00, 1.00, 1.10, 1.00, 0.95, 0.85],  # fading summer
+    "BR-L": [0.95, 0.95, 0.98, 1.05, 1.10, 0.95],  # mild swing
+    "BR-M": [0.80, 0.85, 0.90, 0.95, 1.00, 1.05],  # steady recovery
+    "BR-N": [1.10, 1.05, 1.00, 0.95, 0.90, 0.85],  # declining
+    "BR-O": [0.92, 0.95, 1.02, 1.08, 1.12, 1.00],  # strong summer
+    "BR-P": [0.98, 0.99, 1.01, 1.02, 1.00, 0.95],  # near perfect (star performer)
+    "BR-Q": [1.00, 0.95, 0.90, 0.95, 1.00, 1.05],  # wavy
+    "BR-R": [0.88, 0.92, 0.96, 1.00, 1.04, 0.90],  # gentle recovery, August dip
+    "BR-S": [0.75, 0.80, 0.90, 0.95, 1.05, 1.10],  # weak first half
+    "BR-T": [1.00, 1.00, 0.90, 0.80, 0.85, 0.70],  # August collapse (small branch)
 }
 
 # ---------- Layer 3: documented outage events (true zero receipts) ----------
 # branch, period -> cakes that received nothing that month.
 OUTAGES = {
-    ("BR-D", 2): ["CAKE-001", "CAKE-003", "CAKE-006"],  # April supply failure
+    ("BR-D", 2): ["CAKE-001", "CAKE-003", "CAKE-006", "CAKE-013", "CAKE-024"],  # April supply failure
+    ("BR-T", 6): ["CAKE-002", "CAKE-009", "CAKE-017", "CAKE-021"],             # August collapse
 }
 
 # ---------- Stock coverage per raw material (drives the ROP green/red mix) ----------
@@ -168,20 +212,55 @@ for period, month, year in PERIODS:
 print(f"forecast total: {total_forecast}")
 
 # ---------- 2. Actual transfers per month (cakes) ----------
+# Each delivery is a separate receipt: same cake+outlet can arrive in multiple
+# batches on different days; ~6% of SKU-outlet-month combos get no delivery at all
+# (a real stockout -> 0 received, flagged over-forecast upstream).
+_rng = random.Random(2026)
+
+
+def _split_total(total, n):
+    if n == 1:
+        return [total]
+    cuts = sorted(_rng.sample(range(1, total), n - 1))
+    parts = []
+    prev = 0
+    for c in cuts + [total]:
+        parts.append(c - prev)
+        prev = c
+    return parts
+
+
+def _delivery_rows(branch, code, name, base, seas, period, month, year):
+    monthly = actual_qty(code, base, seas[period - 1], branch, period)
+    if code in OUTAGES.get((branch, period), ()):
+        return []
+    if monthly <= 0 or _rng.random() < 0.06:
+        return []
+    n = min(_rng.choices([1, 2, 3, 4, 5], weights=[40, 25, 18, 10, 7])[0], monthly)
+    parts = _split_total(monthly, n)
+    days = sorted(_rng.sample(range(1, int(month_end(month)[-2:]) + 1), n))
+    return [
+        {
+            "branch_code": branch,
+            "item_code": code,
+            "item_name": name,
+            "quantity": qty,
+            "date": f"{year:04d}-{month:02d}-{day:02d}",
+        }
+        for qty, day in zip(parts, days)
+    ]
+
+
 rows = []
 for period, month, year in PERIODS:
     for branch in BRANCHES:
         for code, name, base, seas in CAKES:
-            rows.append({
-                "branch_code": branch,
-                "item_code": code,
-                "item_name": name,
-                "quantity": actual_qty(code, base, seas[period - 1], branch, period),
-                "date": month_end(month),
-            })
+            rows += _delivery_rows(branch, code, name, base, seas, period, month, year)
 transfers = pd.DataFrame(rows)
 transfers.to_csv(SAMPLES / "actual_transfers.csv", index=False)
-print(f"actual_transfers.csv: {len(transfers)} rows")
+print(f"actual_transfers.csv: {len(rows)} rows")
+diag = transfers.groupby("branch_code").size().to_dict()
+print("  deliveries per branch:", diag)
 
 # ---------- 3. MRP - raw materials (standalone monthly requirements) ----------
 mrp_qty = {code: qty for code, _, _, qty in RAW_MATERIALS}
@@ -230,7 +309,7 @@ lines = [
     "",
     "## Two product domains, deliberately connected",
     "",
-    "- **Cakes** (forecast, actual transfers, dashboard): 10 kinds of cake sold through 5 branches over",
+    "- **Cakes** (forecast, actual transfers, dashboard): 30 kinds of cake sold through 20 branches over",
     "  Mar-Aug 2026. Model: `actual = round(forecast x cake_bias x branch_reliability)`.",
     "- **Raw materials** (MRP and ROP): 12 ingredients used to bake those cakes. Each raw material's",
     "  monthly requirement in `MRP_full.xlsx` is a standalone planning figure. `stock_on_hand.csv` is",
